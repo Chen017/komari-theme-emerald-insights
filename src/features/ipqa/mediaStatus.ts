@@ -50,6 +50,7 @@ const appearances = {
 } satisfies Record<IpqaMediaState, Omit<IpqaMediaPresentation, 'state' | 'unlocked'>>
 
 const blockedStatus = /未解锁|不解锁|失败|屏蔽|不支持|无法|^(?:no|blocked?|failed|unsupported)\b|not\s+(?:unlocked|supported|available)/i
+const restrictedStatus = /中国|禁会员|^(?:china|cn|noprem)\b/i
 const limitedStatus = /仅自制|仅网页|仅APP|originals|nf\.only|webonly|apponly/i
 const unlockedStatus = /解锁|\b(?:yes|native|unlocked)\b/i
 const dnsUnlockType = /dns|代理解锁|\bproxy\b/i
@@ -62,7 +63,7 @@ export function resolveMediaStatus(service?: IpqaMediaService | null): IpqaMedia
   let state: IpqaMediaState = 'unknown'
 
   // Negative and limited results must precede the positive substring "解锁".
-  if (blockedStatus.test(status)) {
+  if (blockedStatus.test(status) || restrictedStatus.test(status)) {
     state = 'blocked'
   }
   else if (limitedStatus.test(status)) {
@@ -80,6 +81,6 @@ export function resolveMediaStatus(service?: IpqaMediaService | null): IpqaMedia
     ...appearance,
     state,
     unlocked: state === 'unlocked' || state === 'dns' || state === 'limited',
-    label: state === 'dns' || state === 'unknown' ? appearance.label : (status || appearance.label),
+    label: state === 'dns' || state === 'unknown' || restrictedStatus.test(status) ? appearance.label : (status || appearance.label),
   }
 }

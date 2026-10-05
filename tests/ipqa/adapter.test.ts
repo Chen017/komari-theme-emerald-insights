@@ -349,6 +349,25 @@ describe('iPQA adapters & domain model tests', () => {
 })
 
 describe('iPQA protocol-specific overview selectors', () => {
+  it('renders China and Premium restrictions as blocked instead of untested', () => {
+    for (const status of ['China', '中国', 'CN', 'NoPrem', '禁会员']) {
+      const result = resolveMediaStatus({ status, region: 'CN', Type: 'DNS', unlocked: true })
+      assert.equal(result.state, 'blocked')
+      assert.equal(result.unlocked, false)
+      assert.equal(result.label, '未解锁')
+      assert.equal(result.icon, 'lucide:x')
+      assert.match(result.textClass, /text-rose-/)
+      assert.match(result.badgeClass, /text-rose-/)
+    }
+    const node = {
+      has_ipv4: true,
+      v4: { media: { Youtube: { status: 'China', region: 'CN', unlocked: false } } },
+    } as any
+    assert.equal(findProtocolOverviewService(node, 'v4', ['YouTube'], 'media').state, 'blocked')
+    assert.equal(resolveMediaStatus({ status: '未知', region: 'CN' }).state, 'unknown')
+    assert.equal(resolveMediaStatus({ status: 'Yes', region: 'HK' }).state, 'unlocked')
+  })
+
   it('uses archive DNS metadata while preserving negative and limited results', () => {
     assert.equal(resolveMediaStatus({ status: '解锁', Type: 'DNS' }).state, 'dns')
     assert.equal(resolveMediaStatus({ status: 'Yes', type: 'ViaDNS' }).label, 'DNS 解锁')
