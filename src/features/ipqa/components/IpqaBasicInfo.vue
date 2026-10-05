@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import type { IpqaNormalizedReport } from '../types'
 import { Icon } from '@iconify/vue'
+import { getTypeColorClass } from '../formatters'
 
 defineProps<{
   report: IpqaNormalizedReport
 }>()
 
 function formatStr(val: unknown): string {
-  if (val === null || val === undefined) return '--'
+  if (val === null || val === undefined)
+    return '--'
   if (typeof val === 'string') {
     const t = val.trim()
     return (t && t !== 'null' && t !== '--') ? t : '--'
@@ -18,10 +20,12 @@ function formatStr(val: unknown): string {
   if (typeof val === 'object') {
     const obj = val as Record<string, any>
     const name = obj.Name || obj.name || obj.Code || obj.code
-    if (typeof name === 'string' && name.trim()) return name.trim()
+    if (typeof name === 'string' && name.trim())
+      return name.trim()
     try {
       return JSON.stringify(val)
-    } catch {
+    }
+    catch {
       return '--'
     }
   }
@@ -42,28 +46,36 @@ function formatStr(val: unknown): string {
 
       <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
         <div class="p-2.5 rounded-lg bg-neutral-50 dark:bg-neutral-800/40 border border-neutral-100 dark:border-neutral-800/60">
-          <div class="text-[11px] text-neutral-400 dark:text-neutral-500 mb-0.5">IP 地址</div>
+          <div class="text-[11px] text-neutral-400 dark:text-neutral-500 mb-0.5">
+            IP 地址
+          </div>
           <div class="font-mono font-semibold text-neutral-800 dark:text-neutral-100 truncate">
             {{ formatStr(report.info.ip) }}
           </div>
         </div>
 
         <div class="p-2.5 rounded-lg bg-neutral-50 dark:bg-neutral-800/40 border border-neutral-100 dark:border-neutral-800/60">
-          <div class="text-[11px] text-neutral-400 dark:text-neutral-500 mb-0.5">国家 / 地区</div>
+          <div class="text-[11px] text-neutral-400 dark:text-neutral-500 mb-0.5">
+            国家 / 地区
+          </div>
           <div class="font-semibold text-neutral-800 dark:text-neutral-100 truncate">
             {{ formatStr(report.info.country) }} {{ report.info.region && formatStr(report.info.region) !== '--' ? `· ${formatStr(report.info.region)}` : '' }}
           </div>
         </div>
 
         <div class="p-2.5 rounded-lg bg-neutral-50 dark:bg-neutral-800/40 border border-neutral-100 dark:border-neutral-800/60">
-          <div class="text-[11px] text-neutral-400 dark:text-neutral-500 mb-0.5">城市</div>
+          <div class="text-[11px] text-neutral-400 dark:text-neutral-500 mb-0.5">
+            城市
+          </div>
           <div class="font-semibold text-neutral-800 dark:text-neutral-100 truncate">
             {{ formatStr(report.info.city) }}
           </div>
         </div>
 
         <div class="p-2.5 rounded-lg bg-neutral-50 dark:bg-neutral-800/40 border border-neutral-100 dark:border-neutral-800/60">
-          <div class="text-[11px] text-neutral-400 dark:text-neutral-500 mb-0.5">原生 / 广播类型</div>
+          <div class="text-[11px] text-neutral-400 dark:text-neutral-500 mb-0.5">
+            原生 / 广播类型
+          </div>
           <div class="font-semibold text-neutral-800 dark:text-neutral-100 truncate">
             <span
               class="px-1.5 py-0.5 rounded text-[11px] font-medium"
@@ -75,21 +87,27 @@ function formatStr(val: unknown): string {
         </div>
 
         <div class="p-2.5 rounded-lg bg-neutral-50 dark:bg-neutral-800/40 border border-neutral-100 dark:border-neutral-800/60">
-          <div class="text-[11px] text-neutral-400 dark:text-neutral-500 mb-0.5">ASN</div>
+          <div class="text-[11px] text-neutral-400 dark:text-neutral-500 mb-0.5">
+            ASN
+          </div>
           <div class="font-mono font-medium text-neutral-800 dark:text-neutral-100 truncate">
             {{ formatStr(report.info.asn) !== '--' ? (formatStr(report.info.asn).startsWith('AS') ? formatStr(report.info.asn) : `AS${formatStr(report.info.asn)}`) : '--' }}
           </div>
         </div>
 
         <div class="p-2.5 rounded-lg bg-neutral-50 dark:bg-neutral-800/40 border border-neutral-100 dark:border-neutral-800/60">
-          <div class="text-[11px] text-neutral-400 dark:text-neutral-500 mb-0.5">ISP 运营商</div>
+          <div class="text-[11px] text-neutral-400 dark:text-neutral-500 mb-0.5">
+            ISP 运营商
+          </div>
           <div class="font-medium text-neutral-800 dark:text-neutral-100 truncate" :title="formatStr(report.info.isp || report.info.organization)">
             {{ formatStr(report.info.isp || report.info.organization) }}
           </div>
         </div>
 
         <div class="p-2.5 rounded-lg bg-neutral-50 dark:bg-neutral-800/40 border border-neutral-100 dark:border-neutral-800/60 md:col-span-2">
-          <div class="text-[11px] text-neutral-400 dark:text-neutral-500 mb-0.5">所属组织机构 (Organization)</div>
+          <div class="text-[11px] text-neutral-400 dark:text-neutral-500 mb-0.5">
+            所属组织机构 (Organization)
+          </div>
           <div class="font-medium text-neutral-800 dark:text-neutral-100 truncate" :title="formatStr(report.info.organization)">
             {{ formatStr(report.info.organization) }}
           </div>
@@ -114,7 +132,7 @@ function formatStr(val: unknown): string {
             class="flex items-center justify-between py-1 border-b border-neutral-100 dark:border-neutral-800/60 last:border-0"
           >
             <span class="text-neutral-400 dark:text-neutral-500">{{ db }}</span>
-            <span class="font-medium text-neutral-800 dark:text-neutral-200">{{ val || '--' }}</span>
+            <span class="font-medium" :class="getTypeColorClass(val)">{{ formatStr(val) }}</span>
           </div>
           <div v-if="Object.keys(report.type.usage).length === 0" class="text-neutral-400 text-[11px] py-2">
             暂无使用类型分类数据
@@ -137,7 +155,7 @@ function formatStr(val: unknown): string {
             class="flex items-center justify-between py-1 border-b border-neutral-100 dark:border-neutral-800/60 last:border-0"
           >
             <span class="text-neutral-400 dark:text-neutral-500">{{ db }}</span>
-            <span class="font-medium text-neutral-800 dark:text-neutral-200">{{ val || '--' }}</span>
+            <span class="font-medium" :class="getTypeColorClass(val)">{{ formatStr(val) }}</span>
           </div>
           <div v-if="Object.keys(report.type.company).length === 0" class="text-neutral-400 text-[11px] py-2">
             暂无公司类型分类数据

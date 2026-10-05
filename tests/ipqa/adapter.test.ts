@@ -1,15 +1,16 @@
-import assert from 'node:assert/strict'
-import { describe, it } from 'node:test'
-import { getRiskColor, getRiskLabel } from '../../src/features/ipqa/formatters'
-import { findProtocolOverviewService } from '../../src/features/ipqa/overviewSelectors'
 import type {
   IpqaDailyPairedReport,
   IpqaFleetOverview,
   IpqaNormalizedReport,
   RiskCategory,
 } from '../../src/features/ipqa/types'
+import assert from 'node:assert/strict'
+// eslint-disable-next-line test/no-import-node-test
+import { describe, it } from 'node:test'
+import { evaluateProviderScore, getRiskColor, getRiskLabel, getTypeColorClass } from '../../src/features/ipqa/formatters'
+import { findProtocolOverviewService } from '../../src/features/ipqa/overviewSelectors'
 
-describe('IPQA adapters & domain model tests', () => {
+describe('iPQA adapters & domain model tests', () => {
   // 1. Unknown score provider
   it('preserves unknown score providers without dropping fields', () => {
     const report: IpqaNormalizedReport = {
@@ -275,8 +276,6 @@ describe('IPQA adapters & domain model tests', () => {
 
   // 9. Comprehensive evaluateProviderScore tests
   it('correctly evaluates provider scores with canonical IPQA categories and null display', () => {
-    const { evaluateProviderScore } = require('../../src/features/ipqa/formatters')
-
     // null display
     assert.equal(evaluateProviderScore('IPQS', null).text, 'null')
     assert.equal(evaluateProviderScore('IPQS', null).tagLabel, '无数据')
@@ -348,7 +347,7 @@ describe('IPQA adapters & domain model tests', () => {
   })
 })
 
-describe('IPQA protocol-specific overview selectors', () => {
+describe('iPQA protocol-specific overview selectors', () => {
   it('does not leak IPv6 or aggregate media data into an IPv4 view', () => {
     const node = {
       uuid: 'dual',
@@ -381,5 +380,37 @@ describe('IPQA protocol-specific overview selectors', () => {
     assert.equal(v6Netflix.available, true)
     assert.equal(v6Netflix.unlocked, true)
     assert.equal(v4ChatGpt.available, false)
+  })
+
+  it('correctly maps IPQA usage and company type colors', () => {
+    // 机房 -> 红色字
+    assert.ok(getTypeColorClass('机房').includes('rose'))
+    assert.ok(getTypeColorClass('数据中心').includes('rose'))
+    assert.ok(getTypeColorClass('Hosting').includes('rose'))
+    assert.ok(getTypeColorClass('datacenter').includes('rose'))
+
+    // 商业 -> 黄色
+    assert.ok(getTypeColorClass('商业').includes('amber'))
+    assert.ok(getTypeColorClass('商业宽带').includes('amber'))
+    assert.ok(getTypeColorClass('Business').includes('amber'))
+    assert.ok(getTypeColorClass('Commercial').includes('amber'))
+
+    // 其他 -> 黄色
+    assert.ok(getTypeColorClass('其他').includes('amber'))
+    assert.ok(getTypeColorClass('其它').includes('amber'))
+    assert.ok(getTypeColorClass('Other').includes('amber'))
+    assert.ok(getTypeColorClass('CustomOrganization').includes('amber'))
+
+    // 家宽 -> 绿色
+    assert.ok(getTypeColorClass('家宽').includes('emerald'))
+    assert.ok(getTypeColorClass('家庭宽带').includes('emerald'))
+    assert.ok(getTypeColorClass('住宅').includes('emerald'))
+    assert.ok(getTypeColorClass('Residential').includes('emerald'))
+
+    // 缺失 / 空数据 -> 灰色
+    assert.ok(getTypeColorClass(null).includes('neutral'))
+    assert.ok(getTypeColorClass(undefined).includes('neutral'))
+    assert.ok(getTypeColorClass('--').includes('neutral'))
+    assert.ok(getTypeColorClass('未知').includes('neutral'))
   })
 })

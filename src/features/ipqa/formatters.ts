@@ -217,8 +217,10 @@ export function evaluateProviderScore(
   if (key.includes('DBIP') || key.includes('DB-IP')) {
     const num = Number(str)
     if (Number.isFinite(num)) {
-      if (num === 0) return { text: str, cls: getScoreCls('Low'), category: 'Low', tagLabel: '低风险' }
-      if (num <= 50) return { text: str, cls: getScoreCls('Medium'), category: 'Medium', tagLabel: '中风险' }
+      if (num === 0)
+        return { text: str, cls: getScoreCls('Low'), category: 'Low', tagLabel: '低风险' }
+      if (num <= 50)
+        return { text: str, cls: getScoreCls('Medium'), category: 'Medium', tagLabel: '中风险' }
       return { text: str, cls: getScoreCls('High'), category: 'High', tagLabel: '高风险' }
     }
     const upper = str.toUpperCase()
@@ -236,11 +238,84 @@ export function evaluateProviderScore(
   // Generic fallback
   const genericNum = Number(str.replace('%', ''))
   if (Number.isFinite(genericNum)) {
-    if (genericNum < 20) return { text: str, cls: getScoreCls('Low'), category: 'Low', tagLabel: '低风险' }
-    if (genericNum < 50) return { text: str, cls: getScoreCls('Medium'), category: 'Medium', tagLabel: '中风险' }
-    if (genericNum < 75) return { text: str, cls: getScoreCls('High'), category: 'High', tagLabel: '高风险' }
+    if (genericNum < 20)
+      return { text: str, cls: getScoreCls('Low'), category: 'Low', tagLabel: '低风险' }
+    if (genericNum < 50)
+      return { text: str, cls: getScoreCls('Medium'), category: 'Medium', tagLabel: '中风险' }
+    if (genericNum < 75)
+      return { text: str, cls: getScoreCls('High'), category: 'High', tagLabel: '高风险' }
     return { text: str, cls: getScoreCls('Critical'), category: 'Critical', tagLabel: '极高风险' }
   }
 
   return { text: str, cls: 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400 font-medium', category: 'Low', tagLabel: str }
+}
+
+/**
+ * 根据数据库分类类型返回对应的文字颜色 class：
+ * - 机房 (Data Center / Hosting) -> 红色字 (text-rose-600 dark:text-rose-400)
+ * - 商业 (Business / Commercial) -> 黄色 (text-amber-600 dark:text-amber-400)
+ * - 其他 (Other / 其它) -> 黄色 (text-amber-600 dark:text-amber-400)
+ * - 家宽 (Residential / Home Broadband / ISP) -> 绿色 (text-emerald-600 dark:text-emerald-400)
+ * - 缺失 / 空数据 -> 灰色 (text-neutral-400 dark:text-neutral-500)
+ */
+export function getTypeColorClass(val: unknown): string {
+  if (val === null || val === undefined) {
+    return 'text-neutral-400 dark:text-neutral-500'
+  }
+
+  let str = ''
+  if (typeof val === 'string') {
+    str = val.trim()
+  }
+  else if (typeof val === 'object') {
+    const obj = val as Record<string, unknown>
+    const name = obj.Name || obj.name || obj.Code || obj.code || obj.type || obj.Type
+    str = typeof name === 'string' ? name.trim() : ''
+  }
+  else {
+    str = String(val).trim()
+  }
+
+  if (!str || str === '--' || str === 'null' || str === '未知' || str === '无数据') {
+    return 'text-neutral-400 dark:text-neutral-500'
+  }
+
+  const lower = str.toLowerCase()
+
+  // 1. 机房 (Data Center / Hosting) -> 红色字
+  if (
+    str.includes('机房')
+    || str.includes('数据中心')
+    || lower.includes('datacenter')
+    || lower.includes('data center')
+    || lower.includes('hosting')
+    || lower.includes('transit')
+  ) {
+    return 'text-rose-600 dark:text-rose-400'
+  }
+
+  // 2. 商业 (Business / Commercial) -> 黄色
+  if (
+    str.includes('商业')
+    || str.includes('商用')
+    || lower.includes('business')
+    || lower.includes('commercial')
+  ) {
+    return 'text-amber-600 dark:text-amber-400'
+  }
+
+  // 3. 家宽 (Residential / Home Broadband / ISP) -> 绿色
+  if (
+    str.includes('家宽')
+    || str.includes('家庭宽带')
+    || str.includes('住宅')
+    || lower.includes('residential')
+    || lower === 'isp'
+    || lower === 'broadband'
+  ) {
+    return 'text-emerald-600 dark:text-emerald-400'
+  }
+
+  // 4. 其他 / 其它分类 -> 黄色
+  return 'text-amber-600 dark:text-amber-400'
 }
