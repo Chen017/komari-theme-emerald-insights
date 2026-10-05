@@ -16,7 +16,7 @@ const props = defineProps<{
   loading?: boolean
 }>()
 
-const { rates, source, date, fetchRates } = useFxRates()
+const { rates, source, date, sourceLabel, fetchRates } = useFxRates()
 
 onMounted(() => {
   void fetchRates()
@@ -59,7 +59,7 @@ function formatCny(val: number): string {
           <h3 class="font-semibold text-neutral-800 dark:text-neutral-100">
             成本与预算摘要
           </h3>
-          <p class="text-xs text-neutral-400 dark:text-neutral-500">
+          <p class="text-xs text-neutral-600 dark:text-neutral-400">
             按公开汇率及可用缓存换算为人民币（CNY）
           </p>
         </div>
@@ -74,53 +74,57 @@ function formatCny(val: number): string {
       </RouterLink>
     </div>
 
+    <p class="mb-3 text-xs" :class="source === 'default' || source === 'stale-cache' ? 'text-amber-700 dark:text-amber-300' : 'text-neutral-600 dark:text-neutral-400'">
+      {{ sourceLabel }} · {{ date }} · 预算金额为估算值
+    </p>
+
     <!-- 4 Stats Cards -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
       <!-- Monthly Cost -->
       <div class="p-3 rounded-xl bg-neutral-50 dark:bg-neutral-800/40 border border-neutral-100 dark:border-neutral-800/60">
-        <div class="text-[11px] text-neutral-400 dark:text-neutral-500 mb-1">
+        <div class="text-xs text-neutral-600 dark:text-neutral-400 mb-1">
           月均成本
         </div>
         <div v-if="loading" class="h-6 w-20 animate-pulse rounded bg-neutral-200 dark:bg-neutral-800 my-0.5" />
         <div v-else class="text-lg font-bold text-neutral-800 dark:text-neutral-100">
           {{ formatCny(summary.monthlyCny) }}
         </div>
-        <div class="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">
+        <div class="text-xs text-neutral-600 dark:text-neutral-400 mt-0.5">
           {{ summary.pricedNodeCount }} / {{ summary.totalNodeCount }} 台可折算计价
         </div>
       </div>
 
       <!-- Annual Budget -->
       <div class="p-3 rounded-xl bg-neutral-50 dark:bg-neutral-800/40 border border-neutral-100 dark:border-neutral-800/60">
-        <div class="text-[11px] text-neutral-400 dark:text-neutral-500 mb-1">
+        <div class="text-xs text-neutral-600 dark:text-neutral-400 mb-1">
           年度预算
         </div>
         <div v-if="loading" class="h-6 w-20 animate-pulse rounded bg-neutral-200 dark:bg-neutral-800 my-0.5" />
         <div v-else class="text-lg font-bold text-neutral-800 dark:text-neutral-100">
           {{ formatCny(summary.annualBudgetCny) }}
         </div>
-        <div class="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">
+        <div class="text-xs text-neutral-600 dark:text-neutral-400 mt-0.5">
           年化预估支出
         </div>
       </div>
 
       <!-- Upcoming 30d Renewal -->
       <div class="p-3 rounded-xl bg-neutral-50 dark:bg-neutral-800/40 border border-neutral-100 dark:border-neutral-800/60">
-        <div class="text-[11px] text-neutral-400 dark:text-neutral-500 mb-1">
+        <div class="text-xs text-neutral-600 dark:text-neutral-400 mb-1">
           30 天内续费
         </div>
         <div v-if="loading" class="h-6 w-20 animate-pulse rounded bg-neutral-200 dark:bg-neutral-800 my-0.5" />
         <div v-else class="text-lg font-bold text-neutral-800 dark:text-neutral-100">
           {{ formatCny(summary.upcomingRenewalCny) }}
         </div>
-        <div class="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">
+        <div class="text-xs text-neutral-600 dark:text-neutral-400 mt-0.5">
           {{ summary.upcomingRenewalCount }} 台待续费
         </div>
       </div>
 
       <!-- Next Renewal Node -->
       <div class="p-3 rounded-xl bg-neutral-50 dark:bg-neutral-800/40 border border-neutral-100 dark:border-neutral-800/60">
-        <div class="text-[11px] text-neutral-400 dark:text-neutral-500 mb-1">
+        <div class="text-xs text-neutral-600 dark:text-neutral-400 mb-1">
           最近续费节点
         </div>
         <div v-if="loading" class="h-6 w-24 animate-pulse rounded bg-neutral-200 dark:bg-neutral-800 my-0.5" />
@@ -128,15 +132,15 @@ function formatCny(val: number): string {
           <div class="text-sm font-semibold text-neutral-800 dark:text-neutral-100 truncate" :title="nextRenewal.name">
             {{ nextRenewal.name }}
           </div>
-          <div class="text-[10px] text-emerald-600 dark:text-emerald-400 mt-0.5">
+          <div class="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5">
             {{ nextRenewal.timingLabel }} · {{ nextRenewal.renewalLabel }}
           </div>
         </template>
         <template v-else>
-          <div class="text-sm font-medium text-neutral-400 dark:text-neutral-500">
+          <div class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
             暂无近期续费
           </div>
-          <div class="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">
+          <div class="text-xs text-neutral-600 dark:text-neutral-400 mt-0.5">
             未来 30 天无待续费节点
           </div>
         </template>

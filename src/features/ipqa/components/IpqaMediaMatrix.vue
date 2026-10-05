@@ -39,7 +39,7 @@ function getMediaUnlock(node: IpqaNodeOverview, serviceKeys: string[], isAi: boo
       <div class="flex items-center rounded-md bg-neutral-200/60 dark:bg-neutral-800 p-0.5" role="group">
         <button
           type="button"
-          class="rounded px-2 py-0.5 text-[11px] font-medium transition-colors"
+          class="rounded px-2 py-0.5 text-xs font-medium transition-colors"
           :class="selectedIpVersion === 'v4' ? 'bg-white dark:bg-neutral-700 text-emerald-600 dark:text-emerald-300 shadow-xs' : 'text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'"
           @click="selectedIpVersion = 'v4'"
         >
@@ -47,7 +47,7 @@ function getMediaUnlock(node: IpqaNodeOverview, serviceKeys: string[], isAi: boo
         </button>
         <button
           type="button"
-          class="rounded px-2 py-0.5 text-[11px] font-medium transition-colors"
+          class="rounded px-2 py-0.5 text-xs font-medium transition-colors"
           :class="selectedIpVersion === 'v6' ? 'bg-white dark:bg-neutral-700 text-emerald-600 dark:text-emerald-300 shadow-xs' : 'text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'"
           @click="selectedIpVersion = 'v6'"
         >
@@ -56,11 +56,21 @@ function getMediaUnlock(node: IpqaNodeOverview, serviceKeys: string[], isAi: boo
       </div>
     </div>
 
+    <div class="flex flex-wrap gap-x-3 gap-y-1 mb-2 text-xs">
+      <span class="text-emerald-700 dark:text-emerald-300">✓ 已解锁</span>
+      <span class="text-yellow-700 dark:text-yellow-300">⚡ DNS 解锁</span>
+      <span class="text-amber-700 dark:text-amber-300">⊖ 受限</span>
+      <span class="text-rose-600 dark:text-rose-400">× 未解锁</span>
+      <span class="text-neutral-400">— 未检测</span>
+    </div>
+
     <div class="overflow-x-auto flex-1">
       <table class="w-full text-xs text-left">
         <thead>
-          <tr class="border-b border-neutral-200 dark:border-neutral-800 text-[11px] text-neutral-400 dark:text-neutral-500">
-            <th class="py-2 pr-3 font-medium">节点</th>
+          <tr class="border-b border-neutral-200 dark:border-neutral-800 text-xs text-neutral-600 dark:text-neutral-400">
+            <th class="py-2 pr-3 font-medium">
+              节点
+            </th>
             <th v-for="s in services" :key="s.label" class="py-2 px-2 font-medium whitespace-nowrap">
               {{ s.label }}
             </th>
@@ -72,20 +82,18 @@ function getMediaUnlock(node: IpqaNodeOverview, serviceKeys: string[], isAi: boo
               {{ node.name }}
             </td>
             <td v-for="s in services" :key="s.label" class="py-2.5 px-2 whitespace-nowrap">
-              <template v-if="getMediaUnlock(node, s.keys, Boolean(s.isAi), selectedIpVersion).available">
-                <span
-                  v-if="getMediaUnlock(node, s.keys, Boolean(s.isAi), selectedIpVersion).unlocked"
-                  class="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium"
-                >
-                  <Icon icon="lucide:check" class="w-3.5 h-3.5" />
-                  <span v-if="getMediaUnlock(node, s.keys, Boolean(s.isAi), selectedIpVersion).region" class="text-[10px]">
-                    [{{ getMediaUnlock(node, s.keys, Boolean(s.isAi), selectedIpVersion).region }}]
-                  </span>
+              <span
+                v-if="getMediaUnlock(node, s.keys, Boolean(s.isAi), selectedIpVersion).available"
+                class="inline-flex items-center gap-1 font-medium"
+                :class="getMediaUnlock(node, s.keys, Boolean(s.isAi), selectedIpVersion).textClass"
+                :title="getMediaUnlock(node, s.keys, Boolean(s.isAi), selectedIpVersion).label"
+                :aria-label="`${s.label}：${getMediaUnlock(node, s.keys, Boolean(s.isAi), selectedIpVersion).label}`"
+              >
+                <Icon :icon="getMediaUnlock(node, s.keys, Boolean(s.isAi), selectedIpVersion).icon" class="w-3.5 h-3.5" />
+                <span v-if="getMediaUnlock(node, s.keys, Boolean(s.isAi), selectedIpVersion).region && getMediaUnlock(node, s.keys, Boolean(s.isAi), selectedIpVersion).unlocked" class="text-xs">
+                  [{{ getMediaUnlock(node, s.keys, Boolean(s.isAi), selectedIpVersion).region }}]
                 </span>
-                <span v-else class="text-rose-500 dark:text-rose-400">
-                  <Icon icon="lucide:x" class="w-3.5 h-3.5" />
-                </span>
-              </template>
+              </span>
               <span v-else class="text-neutral-300 dark:text-neutral-600">--</span>
             </td>
           </tr>

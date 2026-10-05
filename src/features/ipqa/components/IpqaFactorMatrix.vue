@@ -35,8 +35,10 @@ const allEngines = computed(() => {
     <div v-else class="overflow-x-auto">
       <table class="w-full text-xs text-left">
         <thead>
-          <tr class="border-b border-neutral-200 dark:border-neutral-800 text-[11px] text-neutral-400 dark:text-neutral-500">
-            <th class="py-2 pr-3 font-medium">风险因子</th>
+          <tr class="border-b border-neutral-200 dark:border-neutral-800 text-xs text-neutral-600 dark:text-neutral-400">
+            <th class="py-2 pr-3 font-medium">
+              风险因子
+            </th>
             <th v-for="eng in allEngines" :key="eng" class="py-2 px-2 font-medium whitespace-nowrap">
               {{ eng }}
             </th>
@@ -51,23 +53,23 @@ const allEngines = computed(() => {
               <template v-if="report.factors[fk]?.[eng] !== undefined">
                 <span
                   v-if="report.factors[fk]![eng] === true"
-                  class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300"
+                  class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-bold bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300"
                 >
                   <Icon icon="lucide:alert-triangle" class="w-3 h-3" />
                   <span>检出</span>
                 </span>
                 <span
                   v-else-if="report.factors[fk]![eng] === false"
-                  class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                  class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
                 >
                   <Icon icon="lucide:check" class="w-3 h-3" />
                   <span>正常</span>
                 </span>
-                <span v-else class="text-[10px] text-neutral-400">
+                <span v-else class="text-xs text-neutral-400">
                   {{ report.factors[fk]![eng] }}
                 </span>
               </template>
-              <span v-else class="text-neutral-300 dark:text-neutral-600">--</span>
+              <span v-else class="text-neutral-600 dark:text-neutral-400" title="该来源未提供此项检测">—</span>
             </td>
           </tr>
         </tbody>

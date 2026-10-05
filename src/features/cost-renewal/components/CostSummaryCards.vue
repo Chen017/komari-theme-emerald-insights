@@ -64,7 +64,7 @@ const cards = computed(() => [
         </div>
       </div>
 
-      <div class="truncate text-[11px] text-muted-foreground" :title="card.detail">
+      <div class="truncate text-xs text-muted-foreground" :title="card.detail">
         {{ card.detail }}
       </div>
     </div>

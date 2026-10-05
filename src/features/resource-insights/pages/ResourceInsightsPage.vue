@@ -20,7 +20,8 @@ const costCardRef = ref<InstanceType<typeof CostSummaryCard> | null>(null)
 const refreshing = ref(false)
 
 async function handleRefreshAll() {
-  if (refreshing.value) return
+  if (refreshing.value)
+    return
   refreshing.value = true
   const minDelay = new Promise(resolve => setTimeout(resolve, 600))
   try {
@@ -47,19 +48,19 @@ async function handleRefreshAll() {
         <div class="mb-2 flex items-center gap-2">
           <RouterLink
             :to="{ name: 'home' }"
-            class="inline-flex items-center gap-1 text-xs text-neutral-400 dark:text-neutral-500 transition-colors hover:text-neutral-800 dark:hover:text-neutral-200"
+            class="inline-flex items-center gap-1 text-xs text-neutral-600 dark:text-neutral-400 transition-colors hover:text-neutral-800 dark:hover:text-neutral-200"
           >
             <Icon icon="lucide:arrow-left" class="size-3.5" />
             返回首页
           </RouterLink>
         </div>
-        <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400">
+        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400">
           Resource Insights
         </p>
         <h1 class="text-2xl font-bold tracking-tight text-neutral-800 dark:text-neutral-100 sm:text-3xl">
           资源概览
         </h1>
-        <p class="mt-1 text-xs text-neutral-400 dark:text-neutral-500 sm:text-sm">
+        <p class="mt-1 text-xs text-neutral-600 dark:text-neutral-400 sm:text-sm">
           每日流量趋势、30 天 VPS 在线率、IP 质量检测与轻量成本摘要。
         </p>
       </div>

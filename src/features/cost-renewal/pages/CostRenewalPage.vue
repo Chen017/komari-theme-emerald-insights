@@ -17,7 +17,8 @@ const { rates, source, date, loading: fxLoading, sourceLabel, fetchRates } = use
 const refreshing = ref(false)
 
 async function handleRefresh() {
-  if (refreshing.value || fxLoading.value) return
+  if (refreshing.value || fxLoading.value)
+    return
   refreshing.value = true
   const minDelay = new Promise(resolve => setTimeout(resolve, 600))
   try {
@@ -65,7 +66,7 @@ const summary = computed(() =>
             返回首页
           </RouterLink>
         </div>
-        <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400">
+        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400">
           Cost & Renewal
         </p>
         <h1 class="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
@@ -79,9 +80,9 @@ const summary = computed(() =>
       <!-- FX Status Bar -->
       <div class="flex items-center gap-2 self-start rounded-lg border border-border/70 bg-card/60 px-3 py-2 text-xs sm:self-auto">
         <div class="flex items-center gap-1.5 text-muted-foreground">
-          <span class="size-2 rounded-full bg-emerald-500" />
-          <span>{{ sourceLabel }}</span>
-          <span class="text-[10px] text-muted-foreground/80">({{ date }})</span>
+          <span class="size-2 rounded-full" :class="source === 'default' || source === 'stale-cache' ? 'bg-amber-500' : 'bg-emerald-500'" />
+          <span :class="source === 'default' || source === 'stale-cache' ? 'text-amber-700 dark:text-amber-300' : ''">{{ sourceLabel }}{{ source === 'default' || source === 'stale-cache' ? ' · 金额仅供估算' : '' }}</span>
+          <span class="text-xs text-muted-foreground/80">({{ date }})</span>
         </div>
         <button
           type="button"

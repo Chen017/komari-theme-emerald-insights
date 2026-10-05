@@ -28,12 +28,12 @@ function getSeverityBadge(sev: string): { label: string, color: string } {
           最近属性与风险变动
         </h4>
       </div>
-      <span class="text-[11px] text-neutral-400 dark:text-neutral-500">
+      <span class="text-xs text-neutral-600 dark:text-neutral-400">
         共 {{ changes.length }} 项近期记录
       </span>
     </div>
 
-    <div v-if="changes.length === 0" class="py-6 text-center text-xs text-neutral-400 dark:text-neutral-500">
+    <div v-if="changes.length === 0" class="py-6 text-center text-xs text-neutral-600 dark:text-neutral-400">
       <Icon icon="lucide:shield-check" class="w-6 h-6 mx-auto mb-1.5 opacity-40 text-emerald-500" />
       <span>所有节点 IP 质量与解锁状态保持稳定，暂无新增变动</span>
     </div>
@@ -50,22 +50,22 @@ function getSeverityBadge(sev: string): { label: string, color: string } {
             <span class="font-medium text-neutral-800 dark:text-neutral-100 truncate">
               {{ change.nodeName }}
             </span>
-            <span class="text-[10px] px-1 rounded bg-neutral-100 dark:bg-neutral-700 text-neutral-500 font-mono">
+            <span class="text-xs px-1 rounded bg-neutral-100 dark:bg-neutral-700 text-neutral-500 font-mono">
               {{ change.ipVersion }}
             </span>
             <span
-              class="text-[10px] px-1.5 py-0.2 rounded font-medium"
+              class="text-xs px-1.5 py-0.2 rounded font-medium"
               :class="getSeverityBadge(change.severity).color"
             >
               {{ getSeverityBadge(change.severity).label }}
             </span>
           </div>
-          <div class="text-neutral-600 dark:text-neutral-300 text-[11px] truncate">
+          <div class="text-neutral-600 dark:text-neutral-300 text-xs truncate">
             {{ change.description }}
           </div>
         </div>
 
-        <div class="shrink-0 text-right text-[11px] text-neutral-400 group-hover:text-neutral-600 dark:group-hover:text-neutral-200 transition-colors flex items-center gap-1">
+        <div class="shrink-0 text-right text-xs text-neutral-400 group-hover:text-neutral-600 dark:group-hover:text-neutral-200 transition-colors flex items-center gap-1">
           <span>{{ change.date }}</span>
           <Icon icon="lucide:chevron-right" class="w-3.5 h-3.5" />
         </div>

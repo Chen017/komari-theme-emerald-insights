@@ -6,9 +6,12 @@ This document applies to `/src` only. Keep changes aligned with the current Vue 
 
 - `main.ts` is bootstrap only. It creates the Vue app, installs Pinia and the router, loads global styles, sets `window.$message`, kicks off `setupIconify()`, and mounts `App.vue`. Do not move feature logic into bootstrap.
 - `App.vue` is the app shell. It owns global layout, mounts `<Toaster>` (vue-sonner) and `Provider`, runs startup lifecycle wiring (`initApp()` / `destroyInitManager()` from `@/utils/init`), and `KeepAlive`s `HomeView`.
-- `src/router/index.ts` defines exactly two lazy routes:
+- `src/router/index.ts` defines five lazy routes:
   - `/` → `@/views/HomeView.vue`
   - `/instance/:id` → `@/views/InstanceDetail.vue`
+  - `/resource-insights` → resource overview
+  - `/cost-renewal` → cost and renewal page
+  - `/ip-quality/:uuid` → node archive detail
 - The router has **no guards** today. Do not add one unless there is a real need.
 
 ## Authoring conventions
@@ -79,4 +82,4 @@ When you need a new piece of UI:
 - Validate source-tree changes with:
   - `bun run lint`
   - `bun run build`
-- There is no test suite. Do not invent one.
+- Run `bun run test` for behavior changes; existing tests use Node with jiti under `tests/`.

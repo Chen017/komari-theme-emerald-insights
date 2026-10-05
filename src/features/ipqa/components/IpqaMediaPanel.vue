@@ -1,21 +1,11 @@
 <script setup lang="ts">
 import type { IpqaNormalizedReport } from '../types'
 import { Icon } from '@iconify/vue'
+import { resolveMediaStatus } from '../mediaStatus'
 
 defineProps<{
   report: IpqaNormalizedReport
 }>()
-
-function getMediaBadge(status?: string): { label: string, color: string } {
-  if (!status) return { label: '未检测', color: 'bg-neutral-100 text-neutral-400 dark:bg-neutral-800' }
-  if (status.includes('解锁') || status.includes('Yes')) {
-    return { label: status, color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300' }
-  }
-  if (status.includes('仅自制')) {
-    return { label: status, color: 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300' }
-  }
-  return { label: status, color: 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300' }
-}
 </script>
 
 <template>
@@ -43,7 +33,7 @@ function getMediaBadge(status?: string): { label: string, color: string } {
           </span>
           <span
             v-if="serviceData.region"
-            class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 font-bold"
+            class="text-xs font-mono px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 font-bold"
           >
             [{{ serviceData.region }}]
           </span>
@@ -51,10 +41,12 @@ function getMediaBadge(status?: string): { label: string, color: string } {
 
         <div>
           <span
-            class="inline-block px-2 py-0.5 rounded text-[11px] font-medium"
-            :class="getMediaBadge(serviceData.status).color"
+            class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium"
+            :class="resolveMediaStatus(serviceData).badgeClass"
+            :title="serviceData.status"
           >
-            {{ getMediaBadge(serviceData.status).label }}
+            <Icon :icon="resolveMediaStatus(serviceData).icon" class="w-3 h-3" />
+            {{ resolveMediaStatus(serviceData).label }}
           </span>
         </div>
       </div>

@@ -18,11 +18,14 @@ const props = defineProps<{
   hasV4: boolean
   hasV6: boolean
   activeIpVersion: 'IPv4' | 'IPv6'
+  canLoadMore?: boolean
+  loadingMore?: boolean
 }>()
 
 const emit = defineEmits<{
   (e: 'update:date', date: string): void
   (e: 'update:ipVersion', version: 'IPv4' | 'IPv6'): void
+  (e: 'loadMore'): void
 }>()
 
 function handleDateChange(val: any) {
@@ -33,14 +36,14 @@ function handleDateChange(val: any) {
 </script>
 
 <template>
-  <div class="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-2xl bg-card/80 backdrop-blur border border-border/70 shadow-xs">
+  <div class="flex flex-wrap items-center justify-between gap-2 p-3 rounded-2xl bg-card/80 backdrop-blur border border-border/70 shadow-xs">
     <!-- Date selector -->
-    <div class="flex items-center gap-2">
+    <div class="flex flex-wrap items-center gap-2 min-w-0">
       <div class="p-1.5 rounded-lg bg-muted text-muted-foreground">
         <Icon icon="lucide:calendar" class="w-4 h-4" />
       </div>
       <div class="flex items-center gap-2">
-        <span class="text-xs text-muted-foreground">检测存档日期:</span>
+        <span class="text-xs text-muted-foreground hidden sm:inline">检测存档日期:</span>
         <SelectRoot :model-value="props.currentDate" @update:model-value="handleDateChange">
           <SelectTrigger
             class="group inline-flex h-8 min-w-[150px] items-center justify-between gap-2 rounded-md border border-border/60 bg-background/80 px-2.5 text-xs font-medium text-foreground shadow-xs transition-colors hover:border-emerald-500/60 hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/25 data-[state=open]:border-emerald-500 data-[state=open]:ring-2 data-[state=open]:ring-emerald-500/15 cursor-pointer"
@@ -84,6 +87,9 @@ function handleDateChange(val: any) {
           </SelectPortal>
         </SelectRoot>
       </div>
+      <button v-if="canLoadMore" type="button" class="text-xs text-emerald-700 dark:text-emerald-300 underline disabled:opacity-50" :disabled="loadingMore" @click="$emit('loadMore')">
+        {{ loadingMore ? '正在加载…' : '加载更早日期' }}
+      </button>
     </div>
 
     <!-- IPv4 / IPv6 Switch -->
@@ -96,7 +102,7 @@ function handleDateChange(val: any) {
         @click="$emit('update:ipVersion', 'IPv4')"
       >
         <span>IPv4</span>
-        <span v-if="!hasV4" class="ml-1 text-[10px] opacity-60">(无)</span>
+        <span v-if="!hasV4" class="ml-1 text-xs opacity-60">(无)</span>
       </button>
       <button
         type="button"
@@ -106,7 +112,7 @@ function handleDateChange(val: any) {
         @click="$emit('update:ipVersion', 'IPv6')"
       >
         <span>IPv6</span>
-        <span v-if="!hasV6" class="ml-1 text-[10px] opacity-60">(无)</span>
+        <span v-if="!hasV6" class="ml-1 text-xs opacity-60">(无)</span>
       </button>
     </div>
   </div>

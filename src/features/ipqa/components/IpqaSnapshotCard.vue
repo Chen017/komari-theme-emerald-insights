@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import type { IpqaDailyPairedReport } from '../types'
+import type { IpqaDailyPairedReport, IpqaNormalizedReport } from '../types'
 import { Icon } from '@iconify/vue'
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { CardX } from '@/components/ui/card-x'
 import { useBackgroundSurface } from '@/composables/useBackgroundSurface'
 import { getRiskColor, getRiskLabel } from '../formatters'
+import { resolveMediaStatus } from '../mediaStatus'
 import { fetchNodeLatest } from '../services/api'
 
 const props = defineProps<{
@@ -16,22 +17,25 @@ const { pickSurfaceClass } = useBackgroundSurface()
 
 const loading = ref(false)
 const latestReport = ref<IpqaDailyPairedReport | null>(null)
+const errorMessage = ref('')
 let loadGeneration = 0
 
 async function loadSnapshot() {
   const targetUuid = props.uuid
-  if (!targetUuid) return
+  if (!targetUuid)
+    return
   const generation = ++loadGeneration
   loading.value = true
+  errorMessage.value = ''
   try {
     const report = await fetchNodeLatest(targetUuid)
     if (generation === loadGeneration) {
       latestReport.value = report
     }
   }
-  catch {
+  catch (error) {
     if (generation === loadGeneration) {
-      latestReport.value = null
+      errorMessage.value = error instanceof Error ? error.message : 'IPQA 数据更新失败'
     }
   }
   finally {
@@ -46,6 +50,7 @@ onMounted(() => {
 })
 
 watch(() => props.uuid, () => {
+  latestReport.value = null
   void loadSnapshot()
 })
 const mediaServices = [
@@ -56,21 +61,31 @@ const mediaServices = [
   { name: 'Reddit', keys: ['Reddit', 'reddit'] },
 ]
 
-function getMediaItem(media: Record<string, any> | undefined, ...names: string[]) {
-  if (!media) return null
+function getMediaItem(media: IpqaNormalizedReport['media'] | undefined, ...names: string[]) {
+  if (!media)
+    return null
   for (const n of names) {
     const lower = n.toLowerCase()
     for (const [k, v] of Object.entries(media)) {
       if (k.toLowerCase() === lower || k.toLowerCase().includes(lower)) {
-        const status = (v as any)?.status
-        const unlocked = typeof status === 'string' && (status.includes('解锁') || status.includes('Yes') || status.includes('仅自制'))
-        const region = (v as any)?.region
-        return { unlocked, region }
+        return { ...resolveMediaStatus(v), region: v.region }
       }
     }
   }
   return null
 }
+
+const chatGpt = computed(() => {
+  const report = latestReport.value
+  if (!report)
+    return null
+  const keys = ['ChatGPT', 'chatgpt', 'OpenAI']
+  const v4 = getMediaItem(report.v4?.media, ...keys)
+  const v6 = getMediaItem(report.v6?.media, ...keys)
+  return [v4, v6].find(item => item?.unlocked)
+    ?? v4 ?? v6
+    ?? (report.summary.aiSummary.ChatGPT ? resolveMediaStatus(report.summary.aiSummary.ChatGPT) : null)
+})
 </script>
 
 <template>
@@ -90,26 +105,33 @@ function getMediaItem(media: Record<string, any> | undefined, ...names: string[]
       </RouterLink>
     </template>
 
-    <div v-if="loading" class="py-4 text-center text-xs text-muted-foreground">
+    <div v-if="errorMessage" class="mb-2 text-xs text-amber-700 dark:text-amber-300" role="status">
+      {{ errorMessage }}{{ latestReport ? '，当前显示上次可用数据。' : '。' }}
+      <button class="ml-2 underline" :disabled="loading" @click="loadSnapshot">
+        重试
+      </button>
+    </div>
+
+    <div v-if="loading && !latestReport" class="py-4 text-center text-xs text-muted-foreground">
       <Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin mx-auto mb-1 text-emerald-500" />
       <span>加载 IPQA 快照...</span>
     </div>
 
-    <div v-else-if="!latestReport" class="py-3 px-2 flex items-center justify-between text-xs text-muted-foreground">
+    <div v-else-if="!latestReport && !errorMessage" class="py-3 px-2 flex items-center justify-between text-xs text-muted-foreground">
       <div class="flex items-center gap-2">
         <Icon icon="lucide:shield" class="w-4 h-4 opacity-50" />
         <span>该节点暂无 IPQA 归档记录</span>
       </div>
       <RouterLink
         :to="`/ip-quality/${uuid}`"
-        class="text-[11px] text-emerald-600 dark:text-emerald-400 hover:underline"
+        class="text-xs text-emerald-600 dark:text-emerald-400 hover:underline"
       >
         前往档案页 →
       </RouterLink>
     </div>
 
     <div
-      v-else
+      v-else-if="latestReport"
       class="rounded-sm bg-slate-500/5 p-2.5 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs"
     >
       <!-- Risk Category -->
@@ -131,15 +153,16 @@ function getMediaItem(media: Record<string, any> | undefined, ...names: string[]
       <!-- Media Unlocking with v4 & v6 in ONE row -->
       <div class="inline-flex items-center gap-2 flex-wrap min-w-0">
         <span class="text-muted-foreground shrink-0">流媒体解锁：</span>
-        <div class="inline-flex items-center gap-4 flex-wrap text-[11px]">
+        <div class="inline-flex items-center gap-4 flex-wrap text-xs">
           <!-- v4 -->
           <div v-if="latestReport.v4" class="inline-flex items-center gap-1.5 flex-wrap">
-            <span class="font-mono text-[10px] px-1 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300 font-semibold">v4</span>
+            <span class="font-mono text-xs px-1 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300 font-semibold">v4</span>
             <template v-for="s in mediaServices" :key="s.name">
               <span
                 v-if="getMediaItem(latestReport.v4?.media, ...s.keys)"
                 class="font-medium"
-                :class="getMediaItem(latestReport.v4?.media, ...s.keys)?.unlocked ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'"
+                :class="getMediaItem(latestReport.v4?.media, ...s.keys)?.textClass"
+                :title="getMediaItem(latestReport.v4?.media, ...s.keys)?.label"
               >
                 {{ s.name }}{{ getMediaItem(latestReport.v4?.media, ...s.keys)?.region ? `[${getMediaItem(latestReport.v4?.media, ...s.keys)?.region}]` : '' }}
               </span>
@@ -148,31 +171,35 @@ function getMediaItem(media: Record<string, any> | undefined, ...names: string[]
 
           <!-- v6 -->
           <div v-if="latestReport.v6" class="inline-flex items-center gap-1.5 flex-wrap">
-            <span class="font-mono text-[10px] px-1 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300 font-semibold">v6</span>
+            <span class="font-mono text-xs px-1 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300 font-semibold">v6</span>
             <template v-for="s in mediaServices" :key="s.name">
               <span
                 v-if="getMediaItem(latestReport.v6?.media, ...s.keys)"
                 class="font-medium"
-                :class="getMediaItem(latestReport.v6?.media, ...s.keys)?.unlocked ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'"
+                :class="getMediaItem(latestReport.v6?.media, ...s.keys)?.textClass"
+                :title="getMediaItem(latestReport.v6?.media, ...s.keys)?.label"
               >
                 {{ s.name }}{{ getMediaItem(latestReport.v6?.media, ...s.keys)?.region ? `[${getMediaItem(latestReport.v6?.media, ...s.keys)?.region}]` : '' }}
               </span>
             </template>
           </div>
 
-          <div v-if="!latestReport.v4 && !latestReport.v6" class="text-muted-foreground">--</div>
+          <div v-if="!latestReport.v4 && !latestReport.v6" class="text-muted-foreground">
+            --
+          </div>
         </div>
       </div>
 
       <!-- AI Unlocking -->
       <div class="inline-flex items-center gap-2 shrink-0">
         <span class="text-muted-foreground shrink-0">AI 解锁：</span>
-        <div class="font-medium text-[11px]">
+        <div class="font-medium text-xs">
           <span
-            v-if="latestReport.summary.aiSummary.ChatGPT"
-            :class="latestReport.summary.aiSummary.ChatGPT.unlocked ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'"
+            v-if="chatGpt"
+            :class="chatGpt.textClass"
+            :title="chatGpt.label"
           >
-            ChatGPT {{ latestReport.summary.aiSummary.ChatGPT.unlocked ? '已解锁' : '未解锁' }}
+            ChatGPT {{ chatGpt.state === 'dns' ? '' : chatGpt.label }}
           </span>
           <span v-else class="text-muted-foreground">--</span>
         </div>

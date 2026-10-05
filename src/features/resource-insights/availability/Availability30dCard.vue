@@ -47,7 +47,7 @@ defineExpose({
               Fleet {{ fleetView.fleetUptimeText }}
             </span>
           </div>
-          <p class="text-xs text-neutral-400 dark:text-neutral-500">
+          <p class="text-xs text-neutral-600 dark:text-neutral-400">
             基于 WebSocket 实时在线事件账本精确统计
           </p>
         </div>
@@ -65,7 +65,7 @@ defineExpose({
       <p class="font-medium text-neutral-700 dark:text-neutral-300 mb-1">
         在线率历史不可用
       </p>
-      <p class="text-neutral-400 dark:text-neutral-500 max-w-[260px] mb-3">
+      <p class="text-neutral-600 dark:text-neutral-400 max-w-[260px] mb-3">
         安装 Availability History 插件后即可开始记录精确在线率历史。
       </p>
       <a
@@ -90,7 +90,7 @@ defineExpose({
 
     <!-- Skeleton Pulse during Loading / Refreshing -->
     <div
-      v-if="state !== 'unsupported' && (props.loading || refreshing)"
+      v-if="state !== 'unsupported' && (props.loading || refreshing || state === 'loading')"
       class="flex-1 overflow-y-auto max-h-[340px] pr-1 space-y-3 py-1"
     >
       <div
@@ -116,7 +116,7 @@ defineExpose({
     >
       <div
         v-if="fleetView.nodes.length === 0"
-        class="h-48 flex flex-col items-center justify-center text-neutral-400 dark:text-neutral-500 text-xs"
+        class="h-48 flex flex-col items-center justify-center text-neutral-600 dark:text-neutral-400 text-xs"
       >
         <Icon icon="lucide:server-off" class="w-8 h-8 mb-2 opacity-40" />
         <span>暂无节点在线数据</span>
@@ -156,11 +156,11 @@ defineExpose({
             {{ node.uptimeText }}
           </div>
           <div
-            class="text-[11px]"
+            class="text-xs"
             :class="{
               'text-emerald-600 dark:text-emerald-400': node.hasData && node.coverageDays >= 28,
               'text-amber-600 dark:text-amber-400': node.hasData && node.coverageDays >= 1 && node.coverageDays < 28,
-              'text-neutral-400 dark:text-neutral-500': !node.hasData || node.coverageDays < 1,
+              'text-neutral-600 dark:text-neutral-400': !node.hasData || node.coverageDays < 1,
             }"
           >
             {{ node.coverageText }}
@@ -172,10 +172,10 @@ defineExpose({
     <!-- Footer Stats -->
     <div
       v-if="state !== 'unsupported'"
-      class="mt-4 pt-3 border-t border-neutral-100 dark:border-neutral-800/80 flex items-center justify-between text-xs text-neutral-400 dark:text-neutral-500"
+      class="mt-4 pt-3 border-t border-neutral-100 dark:border-neutral-800/80 flex items-center justify-between text-xs text-neutral-600 dark:text-neutral-400"
     >
       <span>跟踪节点: {{ fleetView.coveredNodes }} / {{ fleetView.totalNodes }} 台</span>
-      <span :class="fleetView.fleetUptimeRatio !== null ? 'text-emerald-600 dark:text-emerald-400' : 'text-neutral-400 dark:text-neutral-500'">
+      <span :class="fleetView.fleetUptimeRatio !== null ? 'text-emerald-600 dark:text-emerald-400' : 'text-neutral-600 dark:text-neutral-400'">
         30 天在线率 {{ fleetView.fleetUptimeText }}
       </span>
     </div>

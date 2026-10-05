@@ -81,7 +81,7 @@ export function evaluateProviderScore(
   tagLabel: string
 } {
   // If structured classifiedScore is already provided from backend, use it directly
-  if (classifiedScore && classifiedScore.available) {
+  if (classifiedScore && classifiedScore.available && val !== null && val !== undefined && val !== 'null' && val !== '') {
     const category = classifiedScore.categoryKey
     const tagLabel = classifiedScore.categoryLabel || getRiskLabel(category)
     const text = val === null || val === 'null' ? 'null' : String(val ?? '')
@@ -96,8 +96,8 @@ export function evaluateProviderScore(
   // Null-like check
   if (val === null || val === 'null') {
     return {
-      text: 'null',
-      cls: 'bg-neutral-100 text-neutral-400 dark:bg-neutral-800 dark:text-neutral-500 font-mono',
+      text: '—',
+      cls: 'text-neutral-500 dark:text-neutral-400 font-mono',
       category: 'Unknown',
       tagLabel: '无数据',
     }
@@ -105,8 +105,8 @@ export function evaluateProviderScore(
 
   if (val === undefined || val === '' || val === 'N/A' || val === '--' || val === '-') {
     return {
-      text: '--',
-      cls: 'text-neutral-300 dark:text-neutral-600',
+      text: '—',
+      cls: 'text-neutral-500 dark:text-neutral-400',
       category: 'Unknown',
       tagLabel: '无数据',
     }

@@ -6,8 +6,8 @@ import { computed } from 'vue'
 import VChart from 'vue-echarts'
 import { useAppStore } from '@/stores/app'
 import { formatBytes } from '@/utils/helper'
-import TrafficNodeSelect from './TrafficNodeSelect.vue'
 import { useTrafficTrend } from '../composables/useTrafficTrend'
+import TrafficNodeSelect from './TrafficNodeSelect.vue'
 import '@/utils/echarts'
 
 const props = defineProps<{
@@ -333,22 +333,22 @@ const rangeSummary = computed(() => {
       <div v-else class="flex flex-wrap items-center gap-x-3 gap-y-1">
         <span class="font-medium text-muted-foreground">{{ rangeSummary.label }}:</span>
         <div class="flex items-center gap-1.5">
-          <span class="inline-block size-2 rounded-full bg-emerald-500"></span>
-          <span class="text-muted-foreground text-[11px]">下行</span>
+          <span class="inline-block size-2 rounded-full bg-emerald-500" />
+          <span class="text-muted-foreground text-xs">下行</span>
           <span class="font-semibold text-emerald-600 dark:text-emerald-400">{{ formatBytes(rangeSummary.down) }}</span>
         </div>
         <div class="flex items-center gap-1.5">
-          <span class="inline-block size-2 rounded-full bg-sky-500"></span>
-          <span class="text-muted-foreground text-[11px]">上行</span>
+          <span class="inline-block size-2 rounded-full bg-sky-500" />
+          <span class="text-muted-foreground text-xs">上行</span>
           <span class="font-semibold text-sky-600 dark:text-sky-400">{{ formatBytes(rangeSummary.up) }}</span>
         </div>
         <div class="flex items-center gap-1.5 pl-2 border-l border-border/70">
-          <span class="text-muted-foreground text-[11px]">总量</span>
+          <span class="text-muted-foreground text-xs">总量</span>
           <span class="font-bold text-foreground text-[13px]">{{ formatBytes(rangeSummary.total) }}</span>
         </div>
       </div>
 
-      <div class="flex items-center gap-2 text-[11px] text-muted-foreground">
+      <div class="flex items-center gap-2 text-xs text-muted-foreground">
         <template v-if="selectedRange === 'cycle' && resetWindow">
           <span>
             周期: {{ resetWindow.resetStartText }} → {{ resetWindow.endDate.slice(5) }}
@@ -371,7 +371,7 @@ const rangeSummary = computed(() => {
     <!-- Coarse Rollup Warning Notice -->
     <div
       v-if="trafficView.hasCoarseRollup"
-      class="mb-3 px-3 py-1.5 rounded bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40 text-[11px] text-amber-700 dark:text-amber-300 flex items-center gap-2"
+      class="mb-3 px-3 py-1.5 rounded bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40 text-xs text-amber-700 dark:text-amber-300 flex items-center gap-2"
     >
       <Icon icon="lucide:alert-triangle" class="w-3.5 h-3.5 shrink-0" />
       <span>{{ trafficView.coarseWarning || '存在跨越午夜的粗粒度历史聚合，无法精确切分' }}</span>
@@ -423,7 +423,7 @@ const rangeSummary = computed(() => {
     </div>
 
     <!-- Footer -->
-    <div class="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
+    <div class="mt-2 flex items-center justify-between text-xs text-muted-foreground">
       <span>{{ trafficView.message }}</span>
       <span>来源: {{ trafficView.sourceKind === 'records' ? 'Records' : 'Metric Store' }}</span>
     </div>

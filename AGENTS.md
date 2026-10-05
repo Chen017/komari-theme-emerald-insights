@@ -44,8 +44,8 @@ Notes:
 
 - `bun run build` runs type check plus production build
 - `bun run lint` runs eslint with `--fix --cache`
-- There is no test suite in this repository
-- Do not invent `bun test` or Vitest commands here
+- Existing Node regression tests live under `tests/`; run `bun run test`
+- The test script uses Node with jiti; do not invent Vitest commands
 
 ## Build and release contract
 
@@ -71,14 +71,14 @@ Do not change zip naming, manifest filename, or preview filename without updatin
 
 ## CI facts
 
-Source of truth: `.github/workflows/build-ci.yml`
+Source of truth: `.github/workflows/release-on-version-bump.yml`
 
-CI does only:
+The release workflow installs dependencies and builds before packaging:
 
 1. `bun install --frozen-lockfile`
 2. `bun run build`
 
-CI does not run tests, because there is no test suite.
+The release workflow does not currently run the existing test suite; run it locally for behavior changes.
 
 ## Where to look
 
@@ -87,7 +87,7 @@ CI does not run tests, because there is no test suite.
 - Check `komari-theme.json` for theme metadata and managed configuration schema
 - Check `src/` for app behavior
 - Check `public/images/` when code references image filenames directly
-- Check `.github/workflows/build-ci.yml` for CI expectations
+- Check `.github/workflows/release-on-version-bump.yml` for CI expectations
 - Check `.github/ISSUE_TEMPLATE/` for issue intake shape
 
 Contributor density, useful for triage:
@@ -105,7 +105,7 @@ Contributor density, useful for triage:
 - Treat `komari-theme.json` as release input, not optional metadata
 - Treat `docs/preview.png` as release input, not just documentation art
 - Respect existing generated outputs and naming patterns, especially `komari-theme-emerald-build-<sha>.zip`
-- Root verification is lint plus build, not tests
+- Root verification is lint plus build, and `bun run test` for behavior changes
 - UI is built on `reka-ui` + Tailwind CSS v4 (shadcn-vue style under `src/components/ui/`). Do **not** reintroduce Naive UI, UnoCSS, or SCSS — they have been removed.
 
 ## Repo grounded anti-patterns

@@ -104,7 +104,7 @@ const filteredNodes = computed(() => {
               >
                 {{ node.name }}
               </RouterLink>
-              <span v-if="node.isFree" class="ml-1.5 inline-block rounded bg-emerald-500/10 px-1 py-0.2 text-[10px] text-emerald-600 dark:text-emerald-400">
+              <span v-if="node.isFree" class="ml-1.5 inline-block rounded bg-emerald-500/10 px-1 py-0.2 text-xs text-emerald-600 dark:text-emerald-400">
                 免费
               </span>
             </td>
@@ -138,7 +138,7 @@ const filteredNodes = computed(() => {
                 <span :class="node.daysUntilExpiry !== null && node.daysUntilExpiry <= 7 ? 'text-destructive font-medium' : ''">
                   {{ node.expiryAt.slice(0, 10) }}
                 </span>
-                <span v-if="node.daysUntilExpiry !== null" class="ml-1 text-[10px]">
+                <span v-if="node.daysUntilExpiry !== null" class="ml-1 text-xs">
                   ({{ node.daysUntilExpiry >= 0 ? `${node.daysUntilExpiry} 天后` : `已过期 ${Math.abs(node.daysUntilExpiry)} 天` }})
                 </span>
               </template>
@@ -150,7 +150,7 @@ const filteredNodes = computed(() => {
             <!-- 续费方式 -->
             <td class="py-2.5 pr-2 text-right text-muted-foreground">
               <span
-                class="inline-block rounded px-1.5 py-0.5 text-[10px]"
+                class="inline-block rounded px-1.5 py-0.5 text-xs"
                 :class="node.autoRenewal
                   ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
                   : 'bg-muted text-muted-foreground'"

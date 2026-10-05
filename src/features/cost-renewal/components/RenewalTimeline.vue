@@ -127,16 +127,16 @@ function getStatusStyle(status: string) {
                   {{ item.name }}
                 </RouterLink>
                 <span
-                  class="inline-flex items-center rounded border px-1.5 py-0.2 text-[10px] font-medium"
+                  class="inline-flex items-center rounded border px-1.5 py-0.2 text-xs font-medium"
                   :class="getStatusStyle(item.status).badge"
                 >
                   {{ item.statusLabel }}
                 </span>
-                <span class="text-[10px] text-muted-foreground">
+                <span class="text-xs text-muted-foreground">
                   {{ item.renewalLabel }}
                 </span>
               </div>
-              <div class="mt-0.5 text-[11px] text-muted-foreground">
+              <div class="mt-0.5 text-xs text-muted-foreground">
                 <span>到期日: {{ item.date }}</span>
                 <span class="mx-1.5">·</span>
                 <span :class="getStatusStyle(item.status).text">{{ item.timingLabel }}</span>
@@ -154,7 +154,7 @@ function getStatusStyle(status: string) {
                   --
                 </template>
               </div>
-              <div v-if="item.originalAmount && item.originalCurrency" class="text-[10px] text-muted-foreground tabular-nums">
+              <div v-if="item.originalAmount && item.originalCurrency" class="text-xs text-muted-foreground tabular-nums">
                 {{ item.originalCurrency }} {{ item.originalAmount }} / 期
               </div>
             </div>

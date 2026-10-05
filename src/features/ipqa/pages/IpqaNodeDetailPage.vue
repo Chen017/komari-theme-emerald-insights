@@ -14,7 +14,7 @@ import IpqaRawDetails from '../components/IpqaRawDetails.vue'
 import IpqaRiskScores from '../components/IpqaRiskScores.vue'
 import {
   fetchNodeArchive,
-  fetchNodeArchiveDates,
+  fetchNodeArchivePage,
   fetchNodeChanges,
   fetchNodeLatest,
 } from '../services/api'
@@ -34,6 +34,12 @@ const currentDate = ref<string>('')
 const currentReport = ref<IpqaDailyPairedReport | null>(null)
 const activeIpVersion = ref<'IPv4' | 'IPv6'>('IPv4')
 const nodeChanges = ref<IpqaSemanticChange[]>([])
+const hasMoreArchives = ref(false)
+const loadingMore = ref(false)
+const archiveCursor = ref<string | undefined>()
+const errorMessage = ref('')
+const nameExpanded = ref(false)
+const copiedUuid = ref(false)
 
 type TabKey = 'info' | 'score' | 'factor' | 'media' | 'mail' | 'changes' | 'raw'
 const activeTab = ref<TabKey>('info')
@@ -49,38 +55,56 @@ const tabs: Array<{ key: TabKey, label: string, icon: string }> = [
 ]
 
 let loadGeneration = 0
+let pageGeneration = 0
+const archiveDatePattern = /^\d{4}-\d{2}-\d{2}$/
 
 async function loadArchive(targetDate?: string, refreshMetadata = true) {
   const generation = ++loadGeneration
   const targetUuid = uuid.value
   loading.value = true
+  errorMessage.value = ''
 
   try {
     let availableDates = dates.value
 
     if (refreshMetadata) {
-      const [nextDates, changes] = await Promise.all([
-        fetchNodeArchiveDates(targetUuid),
+      pageGeneration += 1
+      loadingMore.value = false
+      const [page, changes] = await Promise.allSettled([
+        fetchNodeArchivePage(targetUuid),
         fetchNodeChanges(targetUuid),
       ])
-      if (generation !== loadGeneration) return
-      availableDates = nextDates
-      dates.value = nextDates
-      nodeChanges.value = changes
+      if (generation !== loadGeneration)
+        return
+      if (page.status === 'rejected')
+        throw page.reason
+      availableDates = page.value.dates
+      dates.value = availableDates
+      hasMoreArchives.value = page.value.hasMore
+      archiveCursor.value = availableDates.at(-1)
+      if (changes.status === 'fulfilled')
+        nodeChanges.value = changes.value
+      else errorMessage.value = '历史变动更新失败，归档报告仍可查看'
     }
 
     if (availableDates.length > 0) {
-      const selected = targetDate && availableDates.includes(targetDate)
+      const selected = targetDate && archiveDatePattern.test(targetDate)
         ? targetDate
         : availableDates[0]!
 
       const report = await fetchNodeArchive(targetUuid, selected)
-      if (generation !== loadGeneration) return
+      if (generation !== loadGeneration)
+        return
 
       currentDate.value = selected
       currentReport.value = report
+      if (report && !dates.value.includes(selected))
+        dates.value = [...dates.value, selected].sort().reverse()
 
-      if (report?.v4) {
+      if (activeIpVersion.value === 'IPv6' && report?.v6) {
+        activeIpVersion.value = 'IPv6'
+      }
+      else if (report?.v4) {
         activeIpVersion.value = 'IPv4'
       }
       else if (report?.v6) {
@@ -89,13 +113,14 @@ async function loadArchive(targetDate?: string, refreshMetadata = true) {
     }
     else {
       const latest = await fetchNodeLatest(targetUuid)
-      if (generation !== loadGeneration) return
+      if (generation !== loadGeneration)
+        return
 
       currentReport.value = latest
       if (latest) {
         dates.value = [latest.date]
         currentDate.value = latest.date
-        activeIpVersion.value = latest.v4 ? 'IPv4' : 'IPv6'
+        activeIpVersion.value = activeIpVersion.value === 'IPv6' && latest.v6 ? 'IPv6' : (latest.v4 ? 'IPv4' : 'IPv6')
       }
       else {
         currentDate.value = ''
@@ -103,9 +128,12 @@ async function loadArchive(targetDate?: string, refreshMetadata = true) {
     }
   }
   catch (err) {
-    if (generation !== loadGeneration) return
+    if (generation !== loadGeneration)
+      return
     console.warn('[IPQA Detail] Error loading node archive:', err)
-    currentReport.value = null
+    errorMessage.value = err instanceof Error ? err.message : '归档加载失败，请重试'
+    if (targetDate && targetDate !== currentReport.value?.date)
+      currentReport.value = null
   }
   finally {
     if (generation === loadGeneration) {
@@ -114,8 +142,40 @@ async function loadArchive(targetDate?: string, refreshMetadata = true) {
   }
 }
 
+async function loadMoreArchives() {
+  if (loadingMore.value || !hasMoreArchives.value || !archiveCursor.value)
+    return
+  const generation = ++pageGeneration
+  loadingMore.value = true
+  try {
+    const page = await fetchNodeArchivePage(uuid.value, 30, archiveCursor.value)
+    if (generation !== pageGeneration)
+      return
+    dates.value = [...new Set([...dates.value, ...page.dates])].sort().reverse()
+    archiveCursor.value = page.dates.at(-1)
+    hasMoreArchives.value = page.hasMore && page.dates.length > 0
+  }
+  catch (err) {
+    if (generation === pageGeneration)
+      errorMessage.value = err instanceof Error ? err.message : '更早日期加载失败'
+  }
+  finally {
+    if (generation === pageGeneration)
+      loadingMore.value = false
+  }
+}
+
+async function copyUuid() {
+  try {
+    await navigator.clipboard.writeText(uuid.value)
+    copiedUuid.value = true
+  }
+  catch { errorMessage.value = '复制失败，请手动选择 UUID 复制' }
+}
+
 function onDateChange(newDate: string) {
-  if (newDate === currentDate.value && currentReport.value?.date === newDate) return
+  if (newDate === currentDate.value && currentReport.value?.date === newDate)
+    return
   void router.push({ query: { ...route.query, date: newDate } })
 }
 
@@ -128,11 +188,15 @@ watch(
       currentDate.value = ''
       currentReport.value = null
       nodeChanges.value = []
+      hasMoreArchives.value = false
+      loadingMore.value = false
+      nameExpanded.value = false
+      copiedUuid.value = false
       void loadArchive(targetDate, true)
       return
     }
 
-    if (newDate !== oldDate && targetDate && targetDate !== currentReport.value?.date) {
+    if (newDate !== oldDate && (!targetDate || targetDate !== currentReport.value?.date)) {
       void loadArchive(targetDate, false)
     }
   },
@@ -140,7 +204,8 @@ watch(
 )
 
 const activeNormalizedReport = computed<IpqaNormalizedReport | null>(() => {
-  if (!currentReport.value) return null
+  if (!currentReport.value)
+    return null
   if (activeIpVersion.value === 'IPv4') {
     return currentReport.value.v4
   }
@@ -155,7 +220,7 @@ const activeNormalizedReport = computed<IpqaNormalizedReport | null>(() => {
       <div class="mb-2 flex items-center gap-2">
         <RouterLink
           to="/resource-insights"
-          class="inline-flex items-center gap-1 text-xs text-neutral-400 dark:text-neutral-500 transition-colors hover:text-neutral-800 dark:hover:text-neutral-200"
+          class="inline-flex items-center gap-1 text-xs text-neutral-600 dark:text-neutral-400 transition-colors hover:text-neutral-800 dark:hover:text-neutral-200"
         >
           <Icon icon="lucide:arrow-left" class="size-3.5" />
           返回资源概览
@@ -163,20 +228,33 @@ const activeNormalizedReport = computed<IpqaNormalizedReport | null>(() => {
       </div>
 
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <div class="flex items-center gap-2.5">
-            <h1 class="text-2xl font-bold tracking-tight text-neutral-800 dark:text-neutral-100 sm:text-3xl">
+        <div class="min-w-0 w-full">
+          <div class="flex items-start gap-2.5">
+            <h1 class="min-w-0 text-xl font-bold tracking-tight text-neutral-800 dark:text-neutral-100 sm:text-3xl break-words" :class="nameExpanded ? '' : 'line-clamp-2 sm:line-clamp-none'" :title="node?.name">
               {{ node?.name || '节点 IPQA 档案' }}
             </h1>
-            <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-300">
+            <span class="shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-300">
               IPQA 归档
             </span>
           </div>
-          <p class="mt-1 text-xs font-mono text-neutral-400 dark:text-neutral-500">
-            UUID: {{ uuid }}
-          </p>
+          <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-neutral-600 dark:text-neutral-400">
+            <button type="button" class="sm:hidden underline" :aria-expanded="nameExpanded" @click="nameExpanded = !nameExpanded">
+              {{ nameExpanded ? '收起名称' : '展开名称' }}
+            </button>
+            <span class="font-mono" :title="uuid">UUID: {{ uuid.length > 16 ? `${uuid.slice(0, 8)}…${uuid.slice(-6)}` : uuid }}</span>
+            <button type="button" class="inline-flex items-center gap-1 hover:text-emerald-700 dark:hover:text-emerald-300" aria-label="复制完整 UUID" @click="copyUuid">
+              <Icon icon="lucide:copy" class="size-3.5" />{{ copiedUuid ? '已复制' : '复制' }}
+            </button>
+          </div>
         </div>
       </div>
+    </div>
+
+    <div v-if="errorMessage" role="alert" class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
+      <span>{{ errorMessage }}</span>
+      <button type="button" class="font-medium underline" :disabled="loading" @click="loadArchive(typeof route.query.date === 'string' ? route.query.date : undefined)">
+        重试
+      </button>
     </div>
 
     <!-- Loading State -->
@@ -187,7 +265,7 @@ const activeNormalizedReport = computed<IpqaNormalizedReport | null>(() => {
 
     <!-- No Archive State -->
     <div
-      v-else-if="!currentReport"
+      v-else-if="!currentReport && !errorMessage"
       class="py-16 px-4 text-center rounded-2xl bg-white/80 dark:bg-neutral-900/80 border border-neutral-200/80 dark:border-neutral-800/80"
     >
       <Icon icon="lucide:file-x-2" class="w-10 h-10 mx-auto mb-2 text-neutral-300 dark:text-neutral-600" />
@@ -200,7 +278,7 @@ const activeNormalizedReport = computed<IpqaNormalizedReport | null>(() => {
     </div>
 
     <!-- Content -->
-    <div v-else class="space-y-5">
+    <div v-else-if="currentReport" class="space-y-5">
       <!-- Navigator: Date selector + IPv4/IPv6 Switch -->
       <IpqaArchiveNavigator
         :dates="dates"
@@ -208,9 +286,16 @@ const activeNormalizedReport = computed<IpqaNormalizedReport | null>(() => {
         :has-v4="currentReport.summary.hasV4"
         :has-v6="currentReport.summary.hasV6"
         :active-ip-version="activeIpVersion"
+        :can-load-more="hasMoreArchives"
+        :loading-more="loadingMore"
+        @load-more="loadMoreArchives"
         @update:date="onDateChange"
         @update:ip-version="v => activeIpVersion = v"
       />
+
+      <p class="text-xs text-neutral-600 dark:text-neutral-400">
+        归档日期：{{ currentReport.date }} · 归档更新：{{ new Date(currentReport.updatedAt).toLocaleString('zh-CN') }}
+      </p>
 
       <!-- Tabs -->
       <div class="flex items-center gap-1 border-b border-neutral-200 dark:border-neutral-800 overflow-x-auto pb-px">

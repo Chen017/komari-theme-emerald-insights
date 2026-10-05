@@ -22,8 +22,10 @@ function getActiveVersion(node: IpqaNodeOverview): 'v4' | 'v6' {
 }
 
 function setCardVersion(node: IpqaNodeOverview, version: 'v4' | 'v6') {
-  if (version === 'v4' && !node.has_ipv4) return
-  if (version === 'v6' && !node.has_ipv6) return
+  if (version === 'v4' && !node.has_ipv4)
+    return
+  if (version === 'v6' && !node.has_ipv6)
+    return
   cardIpVersion.value[node.uuid] = version
 }
 
@@ -50,15 +52,19 @@ function getStatusBadge(status: string): { label: string, color: string } {
 
 function getActiveDate(node: IpqaNodeOverview): string {
   const ver = getActiveVersion(node)
-  if (ver === 'v4' && node.v4?.date) return node.v4.date
-  if (ver === 'v6' && node.v6?.date) return node.v6.date
+  if (ver === 'v4' && node.v4?.date)
+    return node.v4.date
+  if (ver === 'v6' && node.v6?.date)
+    return node.v6.date
   return node.latest_date || '无'
 }
 
 function getActiveRisk(node: IpqaNodeOverview): { category: any, source: string } {
   const ver = getActiveVersion(node)
-  if (ver === 'v4' && node.v4?.risk) return node.v4.risk
-  if (ver === 'v6' && node.v6?.risk) return node.v6.risk
+  if (ver === 'v4' && node.v4?.risk)
+    return node.v4.risk
+  if (ver === 'v6' && node.v6?.risk)
+    return node.v6.risk
   return node.highest_risk
 }
 
@@ -84,24 +90,31 @@ function findAi(node: IpqaNodeOverview, ...names: string[]) {
       <div>
         <!-- Header: Name & Status -->
         <div class="flex items-center justify-between mb-2">
-          <h4 class="font-semibold text-sm text-neutral-800 dark:text-neutral-100 truncate">
+          <h4 class="min-w-0 font-semibold text-sm text-neutral-800 dark:text-neutral-100 truncate" :title="node.name">
             {{ node.name }}
           </h4>
           <span
-            class="text-[11px] px-2 py-0.5 rounded-full font-medium"
+            class="shrink-0 text-xs px-2 py-0.5 rounded-full font-medium"
             :class="getStatusBadge(node.status).color"
           >
             {{ getStatusBadge(node.status).label }}
           </span>
         </div>
 
+        <p v-if="node.freshness?.lastSyncSuccessAt" class="mb-3 text-xs text-neutral-600 dark:text-neutral-400">
+          同步成功：{{ new Date(node.freshness.lastSyncSuccessAt).toLocaleString('zh-CN') }}
+        </p>
+        <p v-if="node.freshness?.reason" class="mb-3 text-xs" :class="node.status === 'ok' ? 'text-neutral-600 dark:text-neutral-400' : 'text-amber-700 dark:text-amber-300'">
+          {{ node.freshness.reason }}
+        </p>
+
         <!-- Meta row: Date & IP version toggle buttons -->
-        <div class="flex items-center justify-between text-xs text-neutral-400 dark:text-neutral-500 mb-3">
+        <div class="flex items-center justify-between text-xs text-neutral-600 dark:text-neutral-400 mb-3">
           <span>存档: {{ getActiveDate(node) }}</span>
           <div class="flex items-center gap-1">
             <button
               type="button"
-              class="text-[10px] px-2 py-0.5 rounded font-mono font-medium transition-all"
+              class="text-xs px-2 py-0.5 rounded font-mono font-medium transition-all"
               :class="[
                 getActiveVersion(node) === 'v4'
                   ? 'bg-indigo-600 text-white shadow-xs font-bold'
@@ -117,7 +130,7 @@ function findAi(node: IpqaNodeOverview, ...names: string[]) {
             </button>
             <button
               type="button"
-              class="text-[10px] px-2 py-0.5 rounded font-mono font-medium transition-all"
+              class="text-xs px-2 py-0.5 rounded font-mono font-medium transition-all"
               :class="[
                 getActiveVersion(node) === 'v6'
                   ? 'bg-indigo-600 text-white shadow-xs font-bold'
@@ -136,7 +149,7 @@ function findAi(node: IpqaNodeOverview, ...names: string[]) {
 
         <!-- Risk Category Badge -->
         <div class="mb-3 flex items-center justify-between">
-          <span class="text-xs text-neutral-400 dark:text-neutral-500">风控评级</span>
+          <span class="text-xs text-neutral-600 dark:text-neutral-400">风控评级</span>
           <div
             class="inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-lg border"
             :class="[
@@ -147,7 +160,7 @@ function findAi(node: IpqaNodeOverview, ...names: string[]) {
           >
             <span class="w-1.5 h-1.5 rounded-full" :class="getRiskColor(getActiveRisk(node).category).dot" />
             <span>{{ getRiskLabel(getActiveRisk(node).category) }}</span>
-            <span v-if="getActiveRisk(node).source !== 'None'" class="text-[10px] opacity-70">
+            <span v-if="getActiveRisk(node).source !== 'None'" class="text-xs opacity-70">
               ({{ getActiveRisk(node).source }})
             </span>
           </div>
@@ -156,37 +169,41 @@ function findAi(node: IpqaNodeOverview, ...names: string[]) {
         <!-- Media & AI Highlights -->
         <div class="space-y-1.5 mb-3 text-xs">
           <div class="flex items-center justify-between">
-            <span class="text-neutral-400 dark:text-neutral-500">流媒体:</span>
+            <span class="text-neutral-600 dark:text-neutral-400">流媒体:</span>
             <div class="flex items-center gap-1.5 flex-wrap justify-end">
               <!-- YouTube -->
               <span
                 v-if="findMedia(node, 'YouTube', 'Youtube')"
-                class="text-[10px] px-1.5 py-0.5 rounded font-medium"
-                :class="findMedia(node, 'YouTube', 'Youtube')?.unlocked ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300' : 'bg-neutral-100 text-neutral-400 dark:bg-neutral-800'"
+                class="text-xs px-1.5 py-0.5 rounded font-medium"
+                :class="findMedia(node, 'YouTube', 'Youtube')?.badgeClass"
+                :title="findMedia(node, 'YouTube', 'Youtube')?.label"
               >
                 YouTube{{ findMedia(node, 'YouTube', 'Youtube')?.region ? ` [${findMedia(node, 'YouTube', 'Youtube')?.region}]` : '' }}
               </span>
               <!-- TikTok -->
               <span
                 v-if="findMedia(node, 'TikTok', 'tiktok')"
-                class="text-[10px] px-1.5 py-0.5 rounded font-medium"
-                :class="findMedia(node, 'TikTok', 'tiktok')?.unlocked ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300' : 'bg-neutral-100 text-neutral-400 dark:bg-neutral-800'"
+                class="text-xs px-1.5 py-0.5 rounded font-medium"
+                :class="findMedia(node, 'TikTok', 'tiktok')?.badgeClass"
+                :title="findMedia(node, 'TikTok', 'tiktok')?.label"
               >
                 TikTok{{ findMedia(node, 'TikTok', 'tiktok')?.region ? ` [${findMedia(node, 'TikTok', 'tiktok')?.region}]` : '' }}
               </span>
               <!-- Reddit -->
               <span
                 v-if="findMedia(node, 'Reddit', 'reddit')"
-                class="text-[10px] px-1.5 py-0.5 rounded font-medium"
-                :class="findMedia(node, 'Reddit', 'reddit')?.unlocked ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300' : 'bg-neutral-100 text-neutral-400 dark:bg-neutral-800'"
+                class="text-xs px-1.5 py-0.5 rounded font-medium"
+                :class="findMedia(node, 'Reddit', 'reddit')?.badgeClass"
+                :title="findMedia(node, 'Reddit', 'reddit')?.label"
               >
                 Reddit{{ findMedia(node, 'Reddit', 'reddit')?.region ? ` [${findMedia(node, 'Reddit', 'reddit')?.region}]` : '' }}
               </span>
               <!-- GPT -->
               <span
                 v-if="findAi(node, 'ChatGPT', 'chatgpt', 'OpenAI')"
-                class="text-[10px] px-1.5 py-0.5 rounded font-medium"
-                :class="findAi(node, 'ChatGPT', 'chatgpt', 'OpenAI')?.unlocked ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300' : 'bg-neutral-100 text-neutral-400 dark:bg-neutral-800'"
+                class="text-xs px-1.5 py-0.5 rounded font-medium"
+                :class="findAi(node, 'ChatGPT', 'chatgpt', 'OpenAI')?.badgeClass"
+                :title="findAi(node, 'ChatGPT', 'chatgpt', 'OpenAI')?.label"
               >
                 GPT
               </span>
@@ -197,7 +214,7 @@ function findAi(node: IpqaNodeOverview, ...names: string[]) {
 
       <!-- Footer: Changes & Link -->
       <div class="pt-2 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-between text-xs">
-        <span class="text-[11px] text-neutral-400 dark:text-neutral-500">
+        <span class="text-xs text-neutral-600 dark:text-neutral-400">
           今日变动: {{ node.changes_today }} 项
         </span>
         <RouterLink

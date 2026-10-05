@@ -8,6 +8,7 @@ import assert from 'node:assert/strict'
 // eslint-disable-next-line test/no-import-node-test
 import { describe, it } from 'node:test'
 import { evaluateProviderScore, getRiskColor, getRiskLabel, getTypeColorClass } from '../../src/features/ipqa/formatters'
+import { resolveMediaStatus } from '../../src/features/ipqa/mediaStatus'
 import { findProtocolOverviewService } from '../../src/features/ipqa/overviewSelectors'
 
 describe('iPQA adapters & domain model tests', () => {
@@ -277,11 +278,11 @@ describe('iPQA adapters & domain model tests', () => {
   // 9. Comprehensive evaluateProviderScore tests
   it('correctly evaluates provider scores with canonical IPQA categories and null display', () => {
     // null display
-    assert.equal(evaluateProviderScore('IPQS', null).text, 'null')
+    assert.equal(evaluateProviderScore('IPQS', null).text, '—')
     assert.equal(evaluateProviderScore('IPQS', null).tagLabel, '无数据')
     assert.equal(evaluateProviderScore('IPQS', null).category, 'Unknown')
-    assert.equal(evaluateProviderScore('DBIP', null).text, 'null')
-    assert.equal(evaluateProviderScore('SCAMALYTICS', 'null').text, 'null')
+    assert.equal(evaluateProviderScore('DBIP', null).text, '—')
+    assert.equal(evaluateProviderScore('SCAMALYTICS', 'null').text, '—')
 
     // DataWave regression: ipapi 18.16% -> 极高风险 (Critical), never 良好
     const ipapiCritical = evaluateProviderScore('ipapi', '18.16%')
@@ -348,6 +349,37 @@ describe('iPQA adapters & domain model tests', () => {
 })
 
 describe('iPQA protocol-specific overview selectors', () => {
+  it('uses archive DNS metadata while preserving negative and limited results', () => {
+    assert.equal(resolveMediaStatus({ status: '解锁', Type: 'DNS' }).state, 'dns')
+    assert.equal(resolveMediaStatus({ status: 'Yes', type: 'ViaDNS' }).label, 'DNS 解锁')
+    assert.equal(resolveMediaStatus({ status: 'DNS解锁' }).state, 'dns')
+    assert.equal(resolveMediaStatus({ status: '解锁', Type: 'Native' }).state, 'unlocked')
+    assert.equal(resolveMediaStatus({ status: '未解锁', Type: 'DNS', unlocked: true }).state, 'blocked')
+    assert.equal(resolveMediaStatus({ status: 'Not Unlocked', unlocked: true }).unlocked, false)
+    assert.equal(resolveMediaStatus({ status: '仅自制', Type: 'DNS' }).state, 'limited')
+    assert.equal(resolveMediaStatus({ status: '未知' }).state, 'unknown')
+    assert.equal(resolveMediaStatus({ unlocked: true }).state, 'unlocked')
+  })
+
+  it('keeps DNS unlocking separate for each protocol and for AI services', () => {
+    const node = {
+      has_ipv4: true,
+      has_ipv6: true,
+      v4: {
+        media: { Netflix: { status: '解锁', Type: 'DNS', region: 'US', unlocked: true } },
+        ai: { ChatGPT: { status: 'Yes', Type: 'ViaDNS', unlocked: true } },
+      },
+      v6: {
+        media: { Netflix: { status: '未解锁', unlocked: true } },
+        ai: {},
+      },
+    } as any
+
+    assert.equal(findProtocolOverviewService(node, 'v4', ['Netflix'], 'media').state, 'dns')
+    assert.equal(findProtocolOverviewService(node, 'v4', ['ChatGPT'], 'ai').state, 'dns')
+    assert.equal(findProtocolOverviewService(node, 'v6', ['Netflix'], 'media').state, 'blocked')
+  })
+
   it('does not leak IPv6 or aggregate media data into an IPv4 view', () => {
     const node = {
       uuid: 'dual',

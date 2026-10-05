@@ -28,18 +28,18 @@ defineProps<{
             getRiskColor(evaluateProviderScore(String(engine), scoreVal, report.classifiedScores?.[String(engine)]).category).border,
           ]"
         >
-          <div class="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 mb-1">
+          <div class="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">
             {{ engine }}
           </div>
           <div>
             <div
               class="text-base font-bold text-neutral-800 dark:text-neutral-100 truncate"
-              :class="{ 'font-mono text-sm text-neutral-400 dark:text-neutral-500': scoreVal === null || scoreVal === 'null' }"
+              :class="{ 'font-mono text-sm text-neutral-600 dark:text-neutral-400': scoreVal === null || scoreVal === 'null' }"
             >
               {{ evaluateProviderScore(String(engine), scoreVal, report.classifiedScores?.[String(engine)]).text }}
             </div>
             <div
-              class="text-[10px] font-medium mt-0.5"
+              class="text-xs font-medium mt-0.5"
               :class="getRiskColor(evaluateProviderScore(String(engine), scoreVal, report.classifiedScores?.[String(engine)]).category).text"
             >
               {{ evaluateProviderScore(String(engine), scoreVal, report.classifiedScores?.[String(engine)]).tagLabel }}

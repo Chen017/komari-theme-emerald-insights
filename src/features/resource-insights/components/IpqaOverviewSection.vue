@@ -12,6 +12,7 @@ import {
   IpqaRiskMatrix,
   RecentIpqaChanges,
 } from '@/features/ipqa'
+import { IpqaApiError } from '@/features/ipqa/services/api'
 import { useAppStore } from '@/stores/app'
 
 const props = defineProps<{
@@ -23,6 +24,8 @@ const loading = ref(false)
 const overview = ref<IpqaFleetOverview | null>(null)
 const recentChanges = ref<Array<IpqaSemanticChange & { nodeName: string }>>([])
 const isPluginAvailable = ref<boolean | null>(null)
+const errorMessage = ref('')
+const lastSuccessAt = ref<string | null>(null)
 
 let loadGeneration = 0
 
@@ -33,26 +36,35 @@ defineExpose({
 async function loadData() {
   const generation = ++loadGeneration
   loading.value = true
+  errorMessage.value = ''
   try {
     const data = await fetchFleetOverview()
-    if (generation !== loadGeneration) return
+    if (generation !== loadGeneration)
+      return
     if (data) {
       overview.value = data
       isPluginAvailable.value = true
+      lastSuccessAt.value = new Date().toISOString()
       const archivedNodes = data.nodes.filter(node =>
         node.has_ipv4 || node.has_ipv6 || node.changes_today > 0,
       )
-      const changesByNode = await Promise.all(
+      const changesByNode = await Promise.allSettled(
         archivedNodes.map(async node => ({
           node,
           changes: await fetchNodeChanges(node.uuid),
         })),
       )
 
-      if (generation !== loadGeneration) return
+      if (generation !== loadGeneration)
+        return
 
       const allChanges: Array<IpqaSemanticChange & { nodeName: string }> = []
-      for (const { node, changes } of changesByNode) {
+      for (const result of changesByNode) {
+        if (result.status === 'rejected') {
+          errorMessage.value = '概览已更新，部分节点的近期变动更新失败，可重试获取'
+          continue
+        }
+        const { node, changes } = result.value
         for (const c of changes) {
           if (c.field && (c.field.includes('Head') || c.field.includes('Time') || c.field.includes('timestamp'))) {
             continue
@@ -62,13 +74,12 @@ async function loadData() {
       }
 
       allChanges.sort((a, b) => b.date.localeCompare(a.date))
-      recentChanges.value = allChanges.slice(0, 15)
+      if (!errorMessage.value)
+        recentChanges.value = allChanges.slice(0, 15)
     }
     else {
-      if (overview.value && isPluginAvailable.value === true)
-        return
-
-      isPluginAvailable.value = false
+      isPluginAvailable.value = true
+      lastSuccessAt.value = new Date().toISOString()
       // Neutral fallback when IPQA data cannot be reached on the initial load.
       overview.value = {
         schema_version: 1,
@@ -81,7 +92,7 @@ async function loadData() {
         nodes: props.nodes.map(n => ({
           uuid: n.uuid,
           name: n.name,
-          status: 'not_installed',
+          status: 'no_archive',
           latest_date: null,
           has_ipv4: false,
           has_ipv6: false,
@@ -94,9 +105,12 @@ async function loadData() {
     }
   }
   catch (err) {
-    if (generation !== loadGeneration) return
+    if (generation !== loadGeneration)
+      return
     console.warn('[IPQA] Failed to load IPQA overview:', err)
-    isPluginAvailable.value = false
+    errorMessage.value = err instanceof Error ? err.message : 'IPQA 数据更新失败，请重试'
+    if (err instanceof IpqaApiError && err.kind === 'not-installed' && !overview.value)
+      isPluginAvailable.value = false
   }
   finally {
     if (generation === loadGeneration) {
@@ -132,11 +146,11 @@ const hasIpqaData = computed(() => {
             <h3 class="font-semibold text-neutral-800 dark:text-neutral-100">
               IP 质量与归档概览
             </h3>
-            <span class="text-[11px] font-medium px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-300">
+            <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-300">
               IPQA
             </span>
           </div>
-          <p class="text-xs text-neutral-400 dark:text-neutral-500">
+          <p class="text-xs text-neutral-600 dark:text-neutral-400">
             涵盖多维度风险评分、流媒体/AI 解锁矩阵、邮件信誉及每日归档差异追踪
           </p>
         </div>
@@ -144,10 +158,22 @@ const hasIpqaData = computed(() => {
     </div>
 
     <!-- 1. Fleet Summary Strip / Skeleton -->
-    <div v-if="props.loading || loading" class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+    <div v-if="(props.loading || loading) && !overview" class="grid grid-cols-2 sm:grid-cols-4 gap-3">
       <div v-for="i in 4" :key="i" class="h-16 animate-pulse rounded-xl bg-neutral-100 dark:bg-neutral-800/60" />
     </div>
     <IpqaFleetSummary v-else-if="overview && isPluginAvailable !== false" :overview="overview" />
+
+    <div v-if="lastSuccessAt" class="text-xs text-neutral-600 dark:text-neutral-400">
+      最后成功获取：{{ new Date(lastSuccessAt).toLocaleString('zh-CN') }}
+      <span v-if="overview?.updated_at"> · 索引更新：{{ new Date(overview.updated_at).toLocaleString('zh-CN') }}</span>
+      <span v-if="loading"> · 正在更新</span>
+    </div>
+    <div v-if="errorMessage" role="alert" class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
+      <span>{{ errorMessage }}{{ overview ? '；当前保留上次可用数据。' : '' }}</span>
+      <button type="button" class="font-medium underline disabled:opacity-50" :disabled="loading" @click="loadData">
+        重试
+      </button>
+    </div>
 
     <!-- Notice if plugin is not detected -->
     <div
@@ -160,7 +186,7 @@ const hasIpqaData = computed(() => {
       <div class="text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1">
         IPQA 数据暂不可用
       </div>
-      <p class="text-[11px] text-neutral-400 dark:text-neutral-500 max-w-md mx-auto mb-3">
+      <p class="text-xs text-neutral-600 dark:text-neutral-400 max-w-md mx-auto mb-3">
         请确认 IPQA Alert Report 插件已安装并运行；临时网络或接口故障也可能导致此状态。
       </p>
       <a
@@ -176,14 +202,14 @@ const hasIpqaData = computed(() => {
 
     <!-- Notice if plugin is installed but has no data yet -->
     <div
-      v-else-if="!hasIpqaData"
+      v-else-if="!hasIpqaData && !loading && !errorMessage"
       class="py-6 px-4 rounded-xl bg-neutral-50/50 dark:bg-neutral-800/20 border border-dashed border-neutral-200 dark:border-neutral-800 text-center"
     >
       <Icon icon="lucide:database" class="w-8 h-8 mx-auto mb-2 text-indigo-400/60" />
       <div class="text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1">
         暂无节点 IPQA 归档数据
       </div>
-      <p class="text-[11px] text-neutral-400 dark:text-neutral-500 max-w-md mx-auto">
+      <p class="text-xs text-neutral-600 dark:text-neutral-400 max-w-md mx-auto">
         请确保在已安装 IP-Quality-Archive 的节点上运行检测，并由 komari-plugin-ipqa-alert-report 每日定时同步。
       </p>
     </div>

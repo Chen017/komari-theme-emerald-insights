@@ -46,7 +46,7 @@ function formatStr(val: unknown): string {
 
       <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
         <div class="p-2.5 rounded-lg bg-neutral-50 dark:bg-neutral-800/40 border border-neutral-100 dark:border-neutral-800/60">
-          <div class="text-[11px] text-neutral-400 dark:text-neutral-500 mb-0.5">
+          <div class="text-xs text-neutral-600 dark:text-neutral-400 mb-0.5">
             IP 地址
           </div>
           <div class="font-mono font-semibold text-neutral-800 dark:text-neutral-100 truncate">
@@ -55,7 +55,7 @@ function formatStr(val: unknown): string {
         </div>
 
         <div class="p-2.5 rounded-lg bg-neutral-50 dark:bg-neutral-800/40 border border-neutral-100 dark:border-neutral-800/60">
-          <div class="text-[11px] text-neutral-400 dark:text-neutral-500 mb-0.5">
+          <div class="text-xs text-neutral-600 dark:text-neutral-400 mb-0.5">
             国家 / 地区
           </div>
           <div class="font-semibold text-neutral-800 dark:text-neutral-100 truncate">
@@ -64,7 +64,7 @@ function formatStr(val: unknown): string {
         </div>
 
         <div class="p-2.5 rounded-lg bg-neutral-50 dark:bg-neutral-800/40 border border-neutral-100 dark:border-neutral-800/60">
-          <div class="text-[11px] text-neutral-400 dark:text-neutral-500 mb-0.5">
+          <div class="text-xs text-neutral-600 dark:text-neutral-400 mb-0.5">
             城市
           </div>
           <div class="font-semibold text-neutral-800 dark:text-neutral-100 truncate">
@@ -73,12 +73,12 @@ function formatStr(val: unknown): string {
         </div>
 
         <div class="p-2.5 rounded-lg bg-neutral-50 dark:bg-neutral-800/40 border border-neutral-100 dark:border-neutral-800/60">
-          <div class="text-[11px] text-neutral-400 dark:text-neutral-500 mb-0.5">
+          <div class="text-xs text-neutral-600 dark:text-neutral-400 mb-0.5">
             原生 / 广播类型
           </div>
           <div class="font-semibold text-neutral-800 dark:text-neutral-100 truncate">
             <span
-              class="px-1.5 py-0.5 rounded text-[11px] font-medium"
+              class="px-1.5 py-0.5 rounded text-xs font-medium"
               :class="formatStr(report.info.type).includes('原生') ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400'"
             >
               {{ formatStr(report.info.type) }}
@@ -87,7 +87,7 @@ function formatStr(val: unknown): string {
         </div>
 
         <div class="p-2.5 rounded-lg bg-neutral-50 dark:bg-neutral-800/40 border border-neutral-100 dark:border-neutral-800/60">
-          <div class="text-[11px] text-neutral-400 dark:text-neutral-500 mb-0.5">
+          <div class="text-xs text-neutral-600 dark:text-neutral-400 mb-0.5">
             ASN
           </div>
           <div class="font-mono font-medium text-neutral-800 dark:text-neutral-100 truncate">
@@ -96,7 +96,7 @@ function formatStr(val: unknown): string {
         </div>
 
         <div class="p-2.5 rounded-lg bg-neutral-50 dark:bg-neutral-800/40 border border-neutral-100 dark:border-neutral-800/60">
-          <div class="text-[11px] text-neutral-400 dark:text-neutral-500 mb-0.5">
+          <div class="text-xs text-neutral-600 dark:text-neutral-400 mb-0.5">
             ISP 运营商
           </div>
           <div class="font-medium text-neutral-800 dark:text-neutral-100 truncate" :title="formatStr(report.info.isp || report.info.organization)">
@@ -105,7 +105,7 @@ function formatStr(val: unknown): string {
         </div>
 
         <div class="p-2.5 rounded-lg bg-neutral-50 dark:bg-neutral-800/40 border border-neutral-100 dark:border-neutral-800/60 md:col-span-2">
-          <div class="text-[11px] text-neutral-400 dark:text-neutral-500 mb-0.5">
+          <div class="text-xs text-neutral-600 dark:text-neutral-400 mb-0.5">
             所属组织机构 (Organization)
           </div>
           <div class="font-medium text-neutral-800 dark:text-neutral-100 truncate" :title="formatStr(report.info.organization)">
@@ -131,10 +131,10 @@ function formatStr(val: unknown): string {
             :key="db"
             class="flex items-center justify-between py-1 border-b border-neutral-100 dark:border-neutral-800/60 last:border-0"
           >
-            <span class="text-neutral-400 dark:text-neutral-500">{{ db }}</span>
+            <span class="text-neutral-600 dark:text-neutral-400">{{ db }}</span>
             <span class="font-medium" :class="getTypeColorClass(val)">{{ formatStr(val) }}</span>
           </div>
-          <div v-if="Object.keys(report.type.usage).length === 0" class="text-neutral-400 text-[11px] py-2">
+          <div v-if="Object.keys(report.type.usage).length === 0" class="text-neutral-400 text-xs py-2">
             暂无使用类型分类数据
           </div>
         </div>
@@ -154,10 +154,10 @@ function formatStr(val: unknown): string {
             :key="db"
             class="flex items-center justify-between py-1 border-b border-neutral-100 dark:border-neutral-800/60 last:border-0"
           >
-            <span class="text-neutral-400 dark:text-neutral-500">{{ db }}</span>
+            <span class="text-neutral-600 dark:text-neutral-400">{{ db }}</span>
             <span class="font-medium" :class="getTypeColorClass(val)">{{ formatStr(val) }}</span>
           </div>
-          <div v-if="Object.keys(report.type.company).length === 0" class="text-neutral-400 text-[11px] py-2">
+          <div v-if="Object.keys(report.type.company).length === 0" class="text-neutral-400 text-xs py-2">
             暂无公司类型分类数据
           </div>
         </div>

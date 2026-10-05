@@ -8,8 +8,9 @@ const props = defineProps<{
 }>()
 
 const filteredChanges = computed(() => {
-  return props.changes.filter(c => {
-    if (!c.field) return true
+  return props.changes.filter((c) => {
+    if (!c.field)
+      return true
     return !c.field.includes('Head') && !c.field.includes('Time') && !c.field.includes('timestamp')
   })
 })
@@ -35,12 +36,12 @@ function getSeverityBadge(sev: string): { label: string, color: string } {
           历史属性与风险变动记录
         </h4>
       </div>
-      <span class="text-[11px] text-neutral-400 dark:text-neutral-500">
+      <span class="text-xs text-neutral-600 dark:text-neutral-400">
         共 {{ filteredChanges.length }} 条变动
       </span>
     </div>
 
-    <div v-if="filteredChanges.length === 0" class="py-8 text-center text-xs text-neutral-400 dark:text-neutral-500">
+    <div v-if="filteredChanges.length === 0" class="py-8 text-center text-xs text-neutral-600 dark:text-neutral-400">
       <Icon icon="lucide:shield-check" class="w-8 h-8 mx-auto mb-2 opacity-40 text-emerald-500" />
       <span>该节点在所选历史周期内未检出属性或评级变动，保持稳定。</span>
     </div>
@@ -56,17 +57,17 @@ function getSeverityBadge(sev: string): { label: string, color: string } {
             <span class="font-medium text-neutral-800 dark:text-neutral-200">
               {{ change.date }}
             </span>
-            <span class="text-[10px] px-1.5 py-0.2 rounded bg-neutral-100 dark:bg-neutral-700 text-neutral-500 font-mono">
+            <span class="text-xs px-1.5 py-0.2 rounded bg-neutral-100 dark:bg-neutral-700 text-neutral-500 font-mono">
               {{ change.ipVersion }}
             </span>
             <span
-              class="text-[10px] px-1.5 py-0.2 rounded font-medium"
+              class="text-xs px-1.5 py-0.2 rounded font-medium"
               :class="getSeverityBadge(change.severity).color"
             >
               {{ getSeverityBadge(change.severity).label }}
             </span>
           </div>
-          <span class="text-[11px] text-neutral-400 font-mono">
+          <span class="text-xs text-neutral-400 font-mono">
             {{ change.field }}
           </span>
         </div>
@@ -75,7 +76,7 @@ function getSeverityBadge(sev: string): { label: string, color: string } {
           {{ change.description }}
         </div>
 
-        <div v-if="change.before !== undefined && change.after !== undefined" class="mt-1 flex items-center gap-2 text-[11px] text-neutral-400 font-mono">
+        <div v-if="change.before !== undefined && change.after !== undefined" class="mt-1 flex items-center gap-2 text-xs text-neutral-400 font-mono">
           <span>原值: {{ String(change.before) }}</span>
           <span>→</span>
           <span class="text-neutral-600 dark:text-neutral-200">新值: {{ String(change.after) }}</span>

@@ -1,7 +1,7 @@
-import type { NodeData } from '@/stores/nodes'
 import type { ResourceHistoryCapabilities } from '../services/historyCapabilities'
 import type { DailyTrafficAggregate } from '../services/trafficAggregator'
 import type { TrafficRange, TrafficTrendSnapshot } from '../services/trafficTrend'
+import type { NodeData } from '@/stores/nodes'
 import { computed, getCurrentScope, onScopeDispose, ref, shallowRef, watch } from 'vue'
 import { getSharedRpc } from '../../../utils/rpc'
 import { fetchHistoryCapabilities } from '../services/historyCapabilities'
@@ -35,6 +35,7 @@ export function useTrafficTrend(options: UseTrafficTrendOptions) {
   const loading = ref(false)
   const refreshing = ref(false)
   const capabilities = shallowRef<ResourceHistoryCapabilities | null>(null)
+  const queryNow = ref(Date.now())
 
   const gateway = createHistoryGateway((method, params, opts) => {
     return getSharedRpc().call(method, params, opts)
@@ -58,15 +59,17 @@ export function useTrafficTrend(options: UseTrafficTrendOptions) {
   const canUseCycle = canUseSinceReset
 
   const resetConfig = computed(() => {
-    if (!selectedNode.value) return null
+    if (!selectedNode.value)
+      return null
     return resolveNodeResetConfig(selectedNode.value, options.settings?.())
   })
 
   const resetWindow = computed(() => {
-    if (!resetConfig.value || !resetConfig.value.day) return null
+    if (!resetConfig.value || !resetConfig.value.day)
+      return null
     const res = calculateResetWindow(
       resetConfig.value.day,
-      new Date(),
+      new Date(queryNow.value),
       resetConfig.value.timezone || TIME_ZONE,
       undefined,
       TIME_ZONE,
@@ -80,7 +83,8 @@ export function useTrafficTrend(options: UseTrafficTrendOptions) {
 
   // Prioritize Agent's own cycle cumulative traffic (net_total_up / net_total_down)
   const cycleCumulative = computed(() => {
-    if (!selectedNode.value) return null
+    if (!selectedNode.value)
+      return null
     const node = selectedNode.value
     const hasAgentTotals = typeof node.net_total_up === 'number' || typeof node.net_total_down === 'number'
     if (hasAgentTotals) {
@@ -116,10 +120,10 @@ export function useTrafficTrend(options: UseTrafficTrendOptions) {
       if (resetWindow.value) {
         return buildInclusiveDateRange(resetWindow.value.startDate, resetWindow.value.endDate)
       }
-      return buildRecentNaturalDayKeys(7, TIME_ZONE)
+      return buildRecentNaturalDayKeys(7, TIME_ZONE, queryNow.value)
     }
     const dayCount = selectedRange.value === '30d' ? 30 : 7
-    return buildRecentNaturalDayKeys(dayCount, TIME_ZONE)
+    return buildRecentNaturalDayKeys(dayCount, TIME_ZONE, queryNow.value)
   })
 
   const snapshot = shallowRef<TrafficTrendSnapshot>({
@@ -138,7 +142,14 @@ export function useTrafficTrend(options: UseTrafficTrendOptions) {
   let activeLease: { release: () => void } | null = null
 
   if (getCurrentScope()) {
+    const onFocus = () => {
+      void fetchTrend()
+    }
+    if (typeof window !== 'undefined')
+      window.addEventListener('focus', onFocus)
     onScopeDispose(() => {
+      if (typeof window !== 'undefined')
+        window.removeEventListener('focus', onFocus)
       requestGeneration += 1
       activeLease?.release()
       activeLease = null
@@ -188,6 +199,8 @@ export function useTrafficTrend(options: UseTrafficTrendOptions) {
   })
 
   async function fetchTrend(isManualRefresh = false) {
+    queryNow.value = Date.now()
+    const queryDates = [...dates.value]
     const generation = ++requestGeneration
     const entityIds = targetEntityIds.value
     if (entityIds.length === 0) {
@@ -217,7 +230,7 @@ export function useTrafficTrend(options: UseTrafficTrendOptions) {
       entityIds,
       range: selectedRange.value,
       timeZone: TIME_ZONE,
-      dates: dates.value,
+      dates: queryDates,
       schema: 3,
       capabilityVersion: 3,
     })
@@ -225,7 +238,8 @@ export function useTrafficTrend(options: UseTrafficTrendOptions) {
     if (!isManualRefresh && typeof localStorage !== 'undefined') {
       const cached = readTrafficTrendCache(localStorage, cacheKey)
       if (cached) {
-        if (generation !== requestGeneration) return
+        if (generation !== requestGeneration)
+          return
         if (activeLease) {
           activeLease.release()
           activeLease = null
@@ -257,7 +271,8 @@ export function useTrafficTrend(options: UseTrafficTrendOptions) {
         // Continue even if capabilities probe fails
       }
 
-      if (generation !== requestGeneration) return
+      if (generation !== requestGeneration)
+        return
 
       if (activeLease) {
         activeLease.release()
@@ -268,9 +283,9 @@ export function useTrafficTrend(options: UseTrafficTrendOptions) {
         const resolved = await resolveTrafficHistory({
           gateway,
           entityIds,
-          dates: dates.value,
+          dates: queryDates,
           timeZone: TIME_ZONE,
-          nowMs: Date.now(),
+          nowMs: queryNow.value,
           signal,
         })
 
@@ -294,14 +309,14 @@ export function useTrafficTrend(options: UseTrafficTrendOptions) {
         for (const item of resolved.evidence) {
           const aggregates = aggregateDailyTraffic({
             timeZone: TIME_ZONE,
-            dates: dates.value,
+            dates: queryDates,
             deltas: item.deltas,
             counters: item.counters,
           })
           byEntity.set(item.entityId, aggregates)
         }
 
-        const vm = buildTrafficTrendViewModel(byEntity, dates.value, entityIds, {
+        const vm = buildTrafficTrendViewModel(byEntity, queryDates, entityIds, {
           coarseDates: resolved.coarseDates,
           failedDates: resolved.failedDates,
         })
@@ -329,11 +344,13 @@ export function useTrafficTrend(options: UseTrafficTrendOptions) {
       activeLease = lease
 
       const res = await lease.promise
-      if (generation !== requestGeneration) return
+      if (generation !== requestGeneration)
+        return
       snapshot.value = res as unknown as TrafficTrendSnapshot
     }
     catch (err: any) {
-      if (generation !== requestGeneration) return
+      if (generation !== requestGeneration)
+        return
       snapshot.value = {
         state: 'error',
         days: [],
@@ -362,7 +379,7 @@ export function useTrafficTrend(options: UseTrafficTrendOptions) {
     selectedEntity,
     selectedRange,
     () => options.nodes().map(node => node.uuid).join(','),
-    () => dates.value.join(','),
+    () => JSON.stringify(resetConfig.value),
   ], () => {
     if (selectedEntity.value !== 'all' && !options.nodes().some(node => node.uuid === selectedEntity.value)) {
       selectedEntity.value = 'all'
