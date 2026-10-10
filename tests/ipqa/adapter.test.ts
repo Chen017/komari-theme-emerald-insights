@@ -464,4 +464,44 @@ describe('iPQA protocol-specific overview selectors', () => {
     assert.ok(getTypeColorClass('--').includes('neutral'))
     assert.ok(getTypeColorClass('未知').includes('neutral'))
   })
+
+  it('preserves full TikTok region identifier ALISG and handles raw metadata fallback', () => {
+    const nodeWithAlisg = {
+      has_ipv4: true,
+      v4: {
+        media: {
+          TikTok: { status: '解锁', region: 'ALISG', unlocked: true },
+        },
+      },
+    } as any
+    const res1 = findProtocolOverviewService(nodeWithAlisg, 'v4', ['TikTok'], 'media')
+    assert.equal(res1.available, true)
+    assert.equal(res1.region, 'ALISG')
+
+    // Fallback when old archive normalized region was truncated to AL but raw Region is ALISG
+    const nodeWithFallback = {
+      has_ipv4: true,
+      v4: {
+        media: {
+          TikTok: { status: '解锁', region: 'AL', Region: 'ALISG', unlocked: true },
+        },
+      },
+    } as any
+    const res2 = findProtocolOverviewService(nodeWithFallback, 'v4', ['TikTok'], 'media')
+    assert.equal(res2.available, true)
+    assert.equal(res2.region, 'ALISG')
+
+    // Bracket cleaning check
+    const nodeWithBrackets = {
+      has_ipv4: true,
+      v4: {
+        media: {
+          TikTok: { status: '解锁', region: '[ALISG]', unlocked: true },
+        },
+      },
+    } as any
+    const res3 = findProtocolOverviewService(nodeWithBrackets, 'v4', ['TikTok'], 'media')
+    assert.equal(res3.available, true)
+    assert.equal(res3.region, 'ALISG')
+  })
 })

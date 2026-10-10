@@ -30,9 +30,14 @@ export function findProtocolOverviewService(
     for (const [key, value] of Object.entries(pool)) {
       const normalizedKey = key.toLowerCase()
       if (normalizedKey === lower || normalizedKey.includes(lower)) {
+        const rawRegion = (value as Record<string, unknown> | undefined)?.Region as string | undefined
+        const resolvedRegion = (value?.region === 'AL' && rawRegion && /ALISG/i.test(rawRegion))
+          ? 'ALISG'
+          : (value?.region || rawRegion || undefined)
+        const cleanRegion = resolvedRegion ? resolvedRegion.replace(/[[\]]/g, '').trim() : undefined
         return {
           ...resolveMediaStatus(value),
-          region: value?.region,
+          region: cleanRegion,
           available: true,
         }
       }
