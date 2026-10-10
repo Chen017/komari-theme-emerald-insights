@@ -100,24 +100,14 @@ const chatGpt = computed(() => {
     <template #header>
       <div class="flex items-center gap-1.5">
         <RouterLink
-          :to="`/ip-quality/${uuid}`"
-          class="font-medium hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors inline-flex items-center gap-1.5 group/title"
+          :to="{ path: `/ip-quality/${uuid}`, query: { from: 'instance' } }"
+          class="font-medium hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors inline-flex items-center gap-1.5 group/title cursor-pointer"
           title="点击查看该节点的 IP 质量详情与历史档案"
         >
           <span>IP 质量概况 (IPQA)</span>
-          <Icon icon="lucide:external-link" class="w-3.5 h-3.5 opacity-60 group-hover/title:opacity-100 transition-opacity" />
+          <Icon icon="lucide:arrow-up-right" class="w-3.5 h-3.5 opacity-60 group-hover/title:opacity-100 transition-opacity" />
         </RouterLink>
       </div>
-    </template>
-
-    <template #header-extra>
-      <RouterLink
-        :to="`/ip-quality/${uuid}`"
-        class="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:underline transition-colors"
-      >
-        <span>查看完整 IP 质量档案</span>
-        <Icon icon="lucide:arrow-right" class="w-3.5 h-3.5" />
-      </RouterLink>
     </template>
 
     <div v-if="errorMessage" class="mb-2 text-xs text-amber-700 dark:text-amber-300" role="status">
@@ -138,7 +128,7 @@ const chatGpt = computed(() => {
         <span>该节点暂无 IPQA 归档记录</span>
       </div>
       <RouterLink
-        :to="`/ip-quality/${uuid}`"
+        :to="{ path: `/ip-quality/${uuid}`, query: { from: 'instance' } }"
         class="text-xs text-emerald-600 dark:text-emerald-400 hover:underline"
       >
         前往档案页 →
@@ -218,17 +208,6 @@ const chatGpt = computed(() => {
           </span>
           <span v-else class="text-muted-foreground">--</span>
         </div>
-      </div>
-
-      <!-- Quick Action: Go to Detail -->
-      <div class="ml-auto shrink-0 flex items-center">
-        <RouterLink
-          :to="`/ip-quality/${uuid}`"
-          class="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:text-emerald-300 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 transition-colors"
-        >
-          <span>查看详情</span>
-          <Icon icon="lucide:chevron-right" class="w-3.5 h-3.5" />
-        </RouterLink>
       </div>
     </div>
   </CardX>

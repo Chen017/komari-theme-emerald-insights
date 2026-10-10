@@ -28,6 +28,21 @@ const nodesStore = useNodesStore()
 const uuid = computed(() => String(route.params.uuid || ''))
 const node = computed(() => nodesStore.nodes.find(n => n.uuid === uuid.value) || null)
 
+const backTarget = computed(() => {
+  const fromInstance = route.query.from === 'instance'
+    || (typeof window !== 'undefined' && Boolean(window.history.state?.back?.includes(`/instance/${uuid.value}`)))
+  if (fromInstance) {
+    return {
+      to: `/instance/${uuid.value}`,
+      label: '返回节点详情',
+    }
+  }
+  return {
+    to: '/resource-insights',
+    label: '返回资源概览',
+  }
+})
+
 const loading = ref(true)
 const dates = ref<string[]>([])
 const currentDate = ref<string>('')
@@ -219,12 +234,21 @@ const activeNormalizedReport = computed<IpqaNormalizedReport | null>(() => {
     <div>
       <div class="mb-2 flex items-center gap-2">
         <RouterLink
-          to="/resource-insights"
+          :to="backTarget.to"
           class="inline-flex items-center gap-1 text-xs text-neutral-600 dark:text-neutral-400 transition-colors hover:text-neutral-800 dark:hover:text-neutral-200"
         >
           <Icon icon="lucide:arrow-left" class="size-3.5" />
-          返回资源概览
+          {{ backTarget.label }}
         </RouterLink>
+        <template v-if="backTarget.label !== '返回资源概览'">
+          <span class="text-xs text-neutral-300 dark:text-neutral-700">·</span>
+          <RouterLink
+            to="/resource-insights"
+            class="text-xs text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
+          >
+            资源概览
+          </RouterLink>
+        </template>
       </div>
 
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
