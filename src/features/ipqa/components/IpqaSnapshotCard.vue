@@ -93,15 +93,27 @@ const chatGpt = computed(() => {
 
 <template>
   <CardX
-    title="IP 质量概况 (IPQA)"
     size="small"
     class="group border-none transition-all rounded-md"
     :class="pickSurfaceClass('bg-background/60 hover:bg-background', 'bg-background/50 hover:bg-background backdrop-blur-xs')"
   >
-    <template #extra>
+    <template #header>
+      <div class="flex items-center gap-1.5">
+        <RouterLink
+          :to="`/ip-quality/${uuid}`"
+          class="font-medium hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors inline-flex items-center gap-1.5 group/title"
+          title="点击查看该节点的 IP 质量详情与历史档案"
+        >
+          <span>IP 质量概况 (IPQA)</span>
+          <Icon icon="lucide:external-link" class="w-3.5 h-3.5 opacity-60 group-hover/title:opacity-100 transition-opacity" />
+        </RouterLink>
+      </div>
+    </template>
+
+    <template #header-extra>
       <RouterLink
         :to="`/ip-quality/${uuid}`"
-        class="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:underline"
+        class="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:underline transition-colors"
       >
         <span>查看完整 IP 质量档案</span>
         <Icon icon="lucide:arrow-right" class="w-3.5 h-3.5" />
@@ -206,6 +218,17 @@ const chatGpt = computed(() => {
           </span>
           <span v-else class="text-muted-foreground">--</span>
         </div>
+      </div>
+
+      <!-- Quick Action: Go to Detail -->
+      <div class="ml-auto shrink-0 flex items-center">
+        <RouterLink
+          :to="`/ip-quality/${uuid}`"
+          class="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:text-emerald-300 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 transition-colors"
+        >
+          <span>查看详情</span>
+          <Icon icon="lucide:chevron-right" class="w-3.5 h-3.5" />
+        </RouterLink>
       </div>
     </div>
   </CardX>

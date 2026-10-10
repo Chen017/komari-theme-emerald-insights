@@ -23,12 +23,13 @@ const props = withDefaults(defineProps<Props>(), {
 const hasHeaderSlot = defineSlots<{
   'header'?: () => any
   'header-extra'?: () => any
+  'extra'?: () => any
   'default'?: () => any
   'footer'?: () => any
 }>()
 
 const paddingClass = computed(() => {
-  const isShowHeader = hasHeaderSlot.header || hasHeaderSlot['header-extra'] || props.title
+  const isShowHeader = hasHeaderSlot.header || hasHeaderSlot['header-extra'] || hasHeaderSlot.extra || props.title
   const pt = isShowHeader ? 'pt-0' : ''
   if (props.size === 'small')
     return `p-3 ${pt}`
@@ -68,7 +69,7 @@ const segmentedFooter = computed(() => {
     )"
   >
     <div
-      v-if="hasHeaderSlot.header || title || hasHeaderSlot['header-extra']"
+      v-if="hasHeaderSlot.header || title || hasHeaderSlot['header-extra'] || hasHeaderSlot.extra"
       :class="cn(
         'flex items-center gap-2',
         headerPaddingClass,
@@ -81,8 +82,10 @@ const segmentedFooter = computed(() => {
           <span class="font-medium">{{ title }}</span>
         </slot>
       </div>
-      <div v-if="hasHeaderSlot['header-extra']" class="shrink-0">
-        <slot name="header-extra" />
+      <div v-if="hasHeaderSlot['header-extra'] || hasHeaderSlot.extra" class="shrink-0">
+        <slot name="header-extra">
+          <slot name="extra" />
+        </slot>
       </div>
     </div>
     <div :class="cn(paddingClass, props.contentClass)">
