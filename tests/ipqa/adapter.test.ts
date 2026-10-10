@@ -8,7 +8,7 @@ import assert from 'node:assert/strict'
 // eslint-disable-next-line test/no-import-node-test
 import { describe, it } from 'node:test'
 import { evaluateProviderScore, getRiskColor, getRiskLabel, getTypeColorClass } from '../../src/features/ipqa/formatters'
-import { resolveMediaStatus } from '../../src/features/ipqa/mediaStatus'
+import { resolveMediaRegion, resolveMediaStatus } from '../../src/features/ipqa/mediaStatus'
 import { findProtocolOverviewService } from '../../src/features/ipqa/overviewSelectors'
 
 describe('iPQA adapters & domain model tests', () => {
@@ -503,5 +503,15 @@ describe('iPQA protocol-specific overview selectors', () => {
     const res3 = findProtocolOverviewService(nodeWithBrackets, 'v4', ['TikTok'], 'media')
     assert.equal(res3.available, true)
     assert.equal(res3.region, 'ALISG')
+
+    // resolveMediaRegion tests (used by IpqaMediaPanel and cards)
+    assert.equal(resolveMediaRegion({ region: 'ALISG' }, 'TikTok'), 'ALISG')
+    assert.equal(resolveMediaRegion({ region: '[ALISG]' }, 'TikTok'), 'ALISG')
+    assert.equal(resolveMediaRegion({ region: 'AL', Region: 'ALISG' }, 'TikTok'), 'ALISG')
+    assert.equal(resolveMediaRegion({ region: 'AL', Region: '[ALISG]' }, 'TikTok'), 'ALISG')
+    assert.equal(resolveMediaRegion({ region: 'AL' }, 'TikTok'), 'ALISG')
+    assert.equal(resolveMediaRegion({ region: 'HK' }, 'DisneyPlus'), 'HK')
+    assert.equal(resolveMediaRegion({ region: '[HK]' }, 'DisneyPlus'), 'HK')
   })
 })
+

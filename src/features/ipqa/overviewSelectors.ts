@@ -1,6 +1,6 @@
 import type { IpqaMediaPresentation } from './mediaStatus'
 import type { IpqaNodeOverview } from './types'
-import { resolveMediaStatus } from './mediaStatus'
+import { resolveMediaRegion, resolveMediaStatus } from './mediaStatus'
 
 export type IpqaProtocolVersion = 'v4' | 'v6'
 export type IpqaOverviewServiceKind = 'media' | 'ai'
@@ -30,14 +30,9 @@ export function findProtocolOverviewService(
     for (const [key, value] of Object.entries(pool)) {
       const normalizedKey = key.toLowerCase()
       if (normalizedKey === lower || normalizedKey.includes(lower)) {
-        const rawRegion = (value as Record<string, unknown> | undefined)?.Region as string | undefined
-        const resolvedRegion = (value?.region === 'AL' && rawRegion && /ALISG/i.test(rawRegion))
-          ? 'ALISG'
-          : (value?.region || rawRegion || undefined)
-        const cleanRegion = resolvedRegion ? resolvedRegion.replace(/[[\]]/g, '').trim() : undefined
         return {
           ...resolveMediaStatus(value),
-          region: cleanRegion,
+          region: resolveMediaRegion(value, key),
           available: true,
         }
       }

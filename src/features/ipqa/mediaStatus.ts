@@ -84,3 +84,28 @@ export function resolveMediaStatus(service?: IpqaMediaService | null): IpqaMedia
     label: state === 'dns' || state === 'unknown' || restrictedStatus.test(status) ? appearance.label : (status || appearance.label),
   }
 }
+
+export function resolveMediaRegion(service?: IpqaMediaService | null, serviceName?: string): string | undefined {
+  if (!service)
+    return undefined
+  const rawRegion = (service.Region ?? service.region ?? (service as Record<string, unknown>).rawRegion) as string | undefined
+  const rawStr = typeof rawRegion === 'string' ? rawRegion : ''
+  let region = typeof service.region === 'string' ? service.region : rawStr
+
+  const isTikTok = serviceName ? /tiktok/i.test(serviceName) : false
+  if (/ALISG/i.test(rawStr) || /ALISG/i.test(region ?? '')) {
+    region = 'ALISG'
+  }
+  else if (isTikTok && (region === 'AL' || /\[AL\]/i.test(rawStr) || rawStr.trim() === 'AL')) {
+    region = 'ALISG'
+  }
+  else if (!region && rawStr) {
+    region = rawStr
+  }
+
+  if (!region || region === '--' || region === 'null')
+    return undefined
+  const cleaned = region.replace(/[[\]]/g, '').trim()
+  return cleaned || undefined
+}
+

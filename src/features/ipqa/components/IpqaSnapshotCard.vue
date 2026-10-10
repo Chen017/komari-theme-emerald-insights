@@ -6,7 +6,7 @@ import { RouterLink } from 'vue-router'
 import { CardX } from '@/components/ui/card-x'
 import { useBackgroundSurface } from '@/composables/useBackgroundSurface'
 import { getRiskColor, getRiskLabel } from '../formatters'
-import { resolveMediaStatus } from '../mediaStatus'
+import { resolveMediaRegion, resolveMediaStatus } from '../mediaStatus'
 import { fetchNodeLatest } from '../services/api'
 
 const props = defineProps<{
@@ -68,12 +68,10 @@ function getMediaItem(media: IpqaNormalizedReport['media'] | undefined, ...names
     const lower = n.toLowerCase()
     for (const [k, v] of Object.entries(media)) {
       if (k.toLowerCase() === lower || k.toLowerCase().includes(lower)) {
-        const rawRegion = (v as Record<string, unknown>).Region as string | undefined
-        const resolvedRegion = (v.region === 'AL' && rawRegion && /ALISG/i.test(rawRegion))
-          ? 'ALISG'
-          : (v.region || rawRegion || undefined)
-        const cleanRegion = resolvedRegion ? resolvedRegion.replace(/[[\]]/g, '').trim() : undefined
-        return { ...resolveMediaStatus(v), region: cleanRegion }
+        return {
+          ...resolveMediaStatus(v),
+          region: resolveMediaRegion(v, k),
+        }
       }
     }
   }

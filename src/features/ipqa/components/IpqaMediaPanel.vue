@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { IpqaNormalizedReport } from '../types'
 import { Icon } from '@iconify/vue'
-import { resolveMediaStatus } from '../mediaStatus'
+import { resolveMediaRegion, resolveMediaStatus } from '../mediaStatus'
 
 defineProps<{
   report: IpqaNormalizedReport
@@ -32,10 +32,10 @@ defineProps<{
             {{ serviceName }}
           </span>
           <span
-            v-if="serviceData.region"
+            v-if="resolveMediaRegion(serviceData, String(serviceName))"
             class="text-xs font-mono px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 font-bold"
           >
-            [{{ serviceData.region }}]
+            [{{ resolveMediaRegion(serviceData, String(serviceName)) }}]
           </span>
         </div>
 
