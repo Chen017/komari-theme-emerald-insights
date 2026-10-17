@@ -1,7 +1,13 @@
 {
-  "name": "Komari Emerald Insights",
+  "name": {
+    "zh-CN": "Komari Emerald Insights · 翡翠洞察",
+    "en": "Komari Emerald Insights"
+  },
   "short": "emerald-insights",
-  "description": "Modern Komari theme with Resource Insights, traffic trends, exact availability, IPQA visualization, cost and renewal analytics.",
+  "description": {
+    "zh-CN": "现代翡翠风格全功能监控主题：集成资源概览大盘、30天在线率、IP质量与流媒体/AI解锁一览（支持查看详细评分与能力）、流量重置趋势以及节点成本与续费分析。",
+    "en": "Modern emerald theme featuring Resource Insights, 30-day availability, IP quality & streaming unlock overview (with detailed metrics), traffic reset trends, and VPS cost/renewal analytics."
+  },
   "version": "2.0.3",
   "author": "Chen017",
   "url": "https://github.com/Chen017/komari-theme-emerald-insights",

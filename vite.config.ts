@@ -40,8 +40,7 @@ function komariThemeZip(): Plugin {
     name: 'komari-theme-zip',
     apply: 'build',
     closeBundle: async () => {
-      const commitHash = getCommitHash()
-      const zipFileName = `komari-theme-emerald-build-${commitHash}.zip`
+      const zipFileName = 'komari-theme-emerald-insights.zip'
       const distDir = resolve(__dirname, 'dist')
       const themeJsonPath = resolve(__dirname, 'komari-theme.json')
       const previewPath = resolve(__dirname, 'docs/preview.png')
@@ -66,16 +65,7 @@ function komariThemeZip(): Plugin {
       return new Promise((resolvePromise, reject) => {
         output.on('close', () => {
           const sizeMB = (archive.pointer() / 1024 / 1024).toFixed(2)
-          console.log(`[komari-theme-zip] Created ${zipFileName} (${sizeMB} MB)`)
-
-          // Update canonical release zip
-          const canonicalZip = resolve(__dirname, 'komari-theme-emerald-insights.zip')
-          try {
-            fs.copyFileSync(outputPath, canonicalZip)
-            console.log(`[komari-theme-zip] Updated canonical zip: ${canonicalZip}`)
-          } catch (err) {
-            console.error('[komari-theme-zip] Failed to copy canonical zip:', err)
-          }
+          console.log(`[komari-theme-zip] Created canonical zip ${zipFileName} (${sizeMB} MB)`)
 
           // Push to Desktop
           const desktopDir = resolve(process.env.USERPROFILE || 'C:\\Users\\y2hlb', 'Desktop')
