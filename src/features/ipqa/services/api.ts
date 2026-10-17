@@ -71,8 +71,9 @@ export async function fetchCapabilities(): Promise<IpqaCapabilities | null> {
   return getJson<IpqaCapabilities>('/capabilities', 'plugin:ipqaGetCapabilities')
 }
 
-export async function fetchFleetOverview(): Promise<IpqaFleetOverview | null> {
-  return getJson<IpqaFleetOverview>('/overview', 'plugin:ipqaGetOverview')
+export async function fetchFleetOverview(uuids?: string[]): Promise<IpqaFleetOverview | null> {
+  const query = uuids && uuids.length > 0 ? `?uuids=${encodeURIComponent(uuids.join(','))}` : ''
+  return getJson<IpqaFleetOverview>(`/overview${query}`, 'plugin:ipqaGetOverview', uuids && uuids.length > 0 ? { uuids } : undefined)
 }
 
 export async function fetchNodeLatest(uuid: string): Promise<IpqaDailyPairedReport | null> {

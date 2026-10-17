@@ -25,6 +25,15 @@ it('iPQA transport distinguishes missing plugin, failed updates, empty data and 
     }
     assert.deepEqual(await fetchNodeArchivePage('n', 30, '2026-09-02'), { dates: ['2026-09-01'], hasMore: false })
     assert.ok(url.includes('before=2026-09-02'))
+
+    let overviewUrl = ''
+    globalThis.fetch = async (input) => {
+      overviewUrl = String(input)
+      return Response.json({ schema_version: 1, total_nodes: 1, ipqa_nodes: 1, nodes_with_risk: 0, nodes_with_changes_today: 0, latest_archive_date: null, nodes: [] })
+    }
+    const filteredRes = await fetchFleetOverview(['node-tokyo', 'node-osaka'])
+    assert.ok(overviewUrl.includes('uuids=node-tokyo%2Cnode-osaka'))
+    assert.strictEqual(filteredRes?.schema_version, 1)
   }
   finally {
     globalThis.fetch = originalFetch

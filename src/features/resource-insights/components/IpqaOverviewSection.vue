@@ -2,7 +2,7 @@
 import type { IpqaFleetOverview, IpqaSemanticChange } from '@/features/ipqa'
 import type { NodeData } from '@/stores/nodes'
 import { Icon } from '@iconify/vue'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import {
   fetchFleetOverview,
   fetchNodeChanges,
@@ -22,7 +22,7 @@ const props = defineProps<{
 
 const loading = ref(false)
 const overview = ref<IpqaFleetOverview | null>(null)
-const recentChanges = ref<Array<IpqaSemanticChange & { nodeName: string }>>([])
+const recentChanges = ref<Array<IpqaSemanticChange & { nodeUuid?: string, nodeName: string }>>([])
 const isPluginAvailable = ref<boolean | null>(null)
 const errorMessage = ref('')
 const lastSuccessAt = ref<string | null>(null)
@@ -33,20 +33,58 @@ defineExpose({
   refresh: loadData,
 })
 
+const activeNodeUuids = computed(() => new Set(props.nodes.map(n => n.uuid)))
+
+// Reactive filtered overview strictly synchronized with the currently active nodes in Komari
+const displayOverview = computed<IpqaFleetOverview | null>(() => {
+  if (!overview.value)
+    return null
+  const activeUuids = activeNodeUuids.value
+  const filteredNodes = overview.value.nodes.filter(n => activeUuids.has(n.uuid))
+
+  const totalNodes = props.nodes.length
+  const ipqaNodes = filteredNodes.filter(n => n.status !== 'no_archive').length
+  const nodesWithRisk = filteredNodes.filter(n =>
+    n.highest_risk?.category && n.highest_risk.category !== 'Unknown',
+  ).length
+  const nodesWithChangesToday = filteredNodes.filter(n => (n.changes_today ?? 0) > 0).length
+
+  return {
+    ...overview.value,
+    total_nodes: totalNodes,
+    ipqa_nodes: ipqaNodes,
+    nodes_with_risk: nodesWithRisk,
+    nodes_with_changes_today: nodesWithChangesToday,
+    nodes: filteredNodes,
+  }
+})
+
+// Filter recent changes to only include currently active nodes
+const displayRecentChanges = computed(() => {
+  const activeUuids = activeNodeUuids.value
+  return recentChanges.value.filter(c => !c.nodeUuid || activeUuids.has(c.nodeUuid))
+})
+
+const hasIpqaData = computed(() => {
+  return displayOverview.value && displayOverview.value.ipqa_nodes > 0
+})
+
 async function loadData() {
   const generation = ++loadGeneration
   loading.value = true
   errorMessage.value = ''
   try {
-    const data = await fetchFleetOverview()
+    const targetUuids = props.nodes.map(n => n.uuid)
+    const data = await fetchFleetOverview(targetUuids.length > 0 ? targetUuids : undefined)
     if (generation !== loadGeneration)
       return
     if (data) {
       overview.value = data
       isPluginAvailable.value = true
       lastSuccessAt.value = new Date().toISOString()
+      const activeUuids = activeNodeUuids.value
       const archivedNodes = data.nodes.filter(node =>
-        node.has_ipv4 || node.has_ipv6 || node.changes_today > 0,
+        activeUuids.has(node.uuid) && (node.has_ipv4 || node.has_ipv6 || node.changes_today > 0),
       )
       const changesByNode = await Promise.allSettled(
         archivedNodes.map(async node => ({
@@ -58,7 +96,7 @@ async function loadData() {
       if (generation !== loadGeneration)
         return
 
-      const allChanges: Array<IpqaSemanticChange & { nodeName: string }> = []
+      const allChanges: Array<IpqaSemanticChange & { nodeUuid?: string, nodeName: string }> = []
       for (const result of changesByNode) {
         if (result.status === 'rejected') {
           errorMessage.value = '概览已更新，部分节点的近期变动更新失败，可重试获取'
@@ -69,7 +107,7 @@ async function loadData() {
           if (c.field && (c.field.includes('Head') || c.field.includes('Time') || c.field.includes('timestamp'))) {
             continue
           }
-          allChanges.push({ ...c, nodeName: node.name })
+          allChanges.push({ ...c, nodeUuid: node.uuid, nodeName: node.name })
         }
       }
 
@@ -125,9 +163,14 @@ onMounted(() => {
   void loadData()
 })
 
-const hasIpqaData = computed(() => {
-  return overview.value && overview.value.ipqa_nodes > 0
-})
+watch(
+  () => props.nodes.map(n => n.uuid).join(','),
+  (newVal, oldVal) => {
+    if (newVal !== oldVal && isPluginAvailable.value !== false) {
+      void loadData()
+    }
+  },
+)
 </script>
 
 <template>
@@ -158,18 +201,18 @@ const hasIpqaData = computed(() => {
     </div>
 
     <!-- 1. Fleet Summary Strip / Skeleton -->
-    <div v-if="(props.loading || loading) && !overview" class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+    <div v-if="(props.loading || loading) && !displayOverview" class="grid grid-cols-2 sm:grid-cols-4 gap-3">
       <div v-for="i in 4" :key="i" class="h-16 animate-pulse rounded-xl bg-neutral-100 dark:bg-neutral-800/60" />
     </div>
-    <IpqaFleetSummary v-else-if="overview && isPluginAvailable !== false" :overview="overview" />
+    <IpqaFleetSummary v-else-if="displayOverview && isPluginAvailable !== false" :overview="displayOverview" />
 
     <div v-if="lastSuccessAt" class="text-xs text-neutral-600 dark:text-neutral-400">
       最后成功获取：{{ new Date(lastSuccessAt).toLocaleString('zh-CN') }}
-      <span v-if="overview?.updated_at"> · 索引更新：{{ new Date(overview.updated_at).toLocaleString('zh-CN') }}</span>
+      <span v-if="displayOverview?.updated_at"> · 索引更新：{{ new Date(displayOverview.updated_at).toLocaleString('zh-CN') }}</span>
       <span v-if="loading"> · 正在更新</span>
     </div>
     <div v-if="errorMessage" role="alert" class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
-      <span>{{ errorMessage }}{{ overview ? '；当前保留上次可用数据。' : '' }}</span>
+      <span>{{ errorMessage }}{{ displayOverview ? '；当前保留上次可用数据。' : '' }}</span>
       <button type="button" class="font-medium underline disabled:opacity-50" :disabled="loading" @click="loadData">
         重试
       </button>
@@ -233,18 +276,18 @@ const hasIpqaData = computed(() => {
     </div>
 
     <!-- 2. Node Grid -->
-    <IpqaNodeGrid v-if="isPluginAvailable !== false && overview && overview.nodes.length > 0" :nodes="overview.nodes" />
+    <IpqaNodeGrid v-if="isPluginAvailable !== false && displayOverview && displayOverview.nodes.length > 0" :nodes="displayOverview.nodes" />
 
     <!-- 3. Risk & Media Matrices -->
     <div
-      v-if="hasIpqaData && overview && (appStore.ipqaShowRiskMatrix || appStore.ipqaShowMediaMatrix)"
+      v-if="hasIpqaData && displayOverview && (appStore.ipqaShowRiskMatrix || appStore.ipqaShowMediaMatrix)"
       class="grid grid-cols-1 lg:grid-cols-2 gap-4"
     >
-      <IpqaRiskMatrix v-if="appStore.ipqaShowRiskMatrix" :nodes="overview.nodes" />
-      <IpqaMediaMatrix v-if="appStore.ipqaShowMediaMatrix" :nodes="overview.nodes" />
+      <IpqaRiskMatrix v-if="appStore.ipqaShowRiskMatrix" :nodes="displayOverview.nodes" />
+      <IpqaMediaMatrix v-if="appStore.ipqaShowMediaMatrix" :nodes="displayOverview.nodes" />
     </div>
 
     <!-- 4. Recent Changes Timeline -->
-    <RecentIpqaChanges v-if="hasIpqaData && appStore.ipqaShowChanges" :changes="recentChanges" />
+    <RecentIpqaChanges v-if="hasIpqaData && appStore.ipqaShowChanges" :changes="displayRecentChanges" />
   </div>
 </template>
