@@ -183,21 +183,30 @@ const hasIpqaData = computed(() => {
       <div class="p-3 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 w-fit mx-auto mb-3">
         <Icon icon="lucide:plug-zap" class="w-8 h-8" />
       </div>
-      <div class="text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-        IPQA 数据暂不可用
+      <div class="text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1">
+        IPQA 质量大盘未就绪（已优雅降级）
       </div>
-      <p class="text-xs text-neutral-600 dark:text-neutral-400 max-w-md mx-auto mb-3">
-        请确认 IPQA Alert Report 插件已安装并运行；临时网络或接口故障也可能导致此状态。
+      <p class="text-xs text-neutral-600 dark:text-neutral-400 max-w-lg mx-auto mb-3.5 leading-relaxed">
+        当前未检测到配套插件。您可前往 Komari 管理后台<b>「插件商店」</b>直接搜索并安装 <code class="px-1 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 font-mono text-indigo-600 dark:text-indigo-400 font-semibold">IPQA 告警报告</code>（<span class="font-mono text-neutral-500">ipqa-alert-report</span>）；亦可通过 GitHub 手动下载安装。被监控 VPS 需配合安装 IP-Quality-Archive，即可解锁完整 IP 质量、风控矩阵与流媒体/AI 解锁大盘。
       </p>
-      <a
-        href="https://github.com/Chen017/komari-plugin-ipqa-alert-report"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-medium transition-colors"
-      >
-        <Icon icon="lucide:external-link" class="w-3.5 h-3.5" />
-        <span>查看插件说明</span>
-      </a>
+      <div class="flex items-center gap-2 flex-wrap justify-center">
+        <a
+          href="/admin"
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium transition-colors shadow-xs"
+        >
+          <Icon icon="lucide:shopping-bag" class="w-3.5 h-3.5" />
+          <span>前往插件商店安装</span>
+        </a>
+        <a
+          href="https://github.com/Chen017/komari-plugin-ipqa-alert-report"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 text-xs font-medium transition-colors"
+        >
+          <Icon icon="lucide:external-link" class="w-3.5 h-3.5" />
+          <span>GitHub 手动安装</span>
+        </a>
+      </div>
     </div>
 
     <!-- Notice if plugin is installed but has no data yet -->
@@ -206,12 +215,21 @@ const hasIpqaData = computed(() => {
       class="py-6 px-4 rounded-xl bg-neutral-50/50 dark:bg-neutral-800/20 border border-dashed border-neutral-200 dark:border-neutral-800 text-center"
     >
       <Icon icon="lucide:database" class="w-8 h-8 mx-auto mb-2 text-indigo-400/60" />
-      <div class="text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-        暂无节点 IPQA 归档数据
+      <div class="text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1">
+        暂无节点 IPQA 归档数据（已优雅降级）
       </div>
-      <p class="text-xs text-neutral-600 dark:text-neutral-400 max-w-md mx-auto">
-        请确保在已安装 IP-Quality-Archive 的节点上运行检测，并由 komari-plugin-ipqa-alert-report 每日定时同步。
+      <p class="text-xs text-neutral-600 dark:text-neutral-400 max-w-lg mx-auto mb-3 leading-relaxed">
+        已连接 IPQA Alert Report 插件，但尚未发现节点归档。强烈建议在被监控 VPS 上安装并运行 IP-Quality-Archive 采集工具，并在插件中开启归档同步，以此获得完整的节点 IP 质量与风控分析！
       </p>
+      <a
+        href="https://github.com/Chen017/IP-Quality-Archive"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-medium transition-colors"
+      >
+        <Icon icon="lucide:external-link" class="w-3.5 h-3.5" />
+        <span>查看 IP-Quality-Archive 安装说明</span>
+      </a>
     </div>
 
     <!-- 2. Node Grid -->

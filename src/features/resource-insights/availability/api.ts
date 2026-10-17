@@ -1,7 +1,7 @@
 import type { AvailabilitySummaryResponse } from './types'
 
 export class AvailabilityPluginUnavailableError extends Error {
-  constructor(message = '需要 Availability History 插件') {
+  constructor(message = '需要 Availability History 插件（强烈建议安装以获得完整的 30 天在线率体验）') {
     super(message)
     this.name = 'AvailabilityPluginUnavailableError'
   }
@@ -55,7 +55,7 @@ export async function fetchAvailabilitySummary(
   }
 
   if (res.status === 404) {
-    throw new AvailabilityPluginUnavailableError('在线率历史不可用：需要 Availability History 插件')
+    throw new AvailabilityPluginUnavailableError('在线率历史不可用：需要 Availability History 插件（强烈建议安装以获得完整的 30 天在线率体验）')
   }
 
   if (res.status === 502 || res.status === 503) {

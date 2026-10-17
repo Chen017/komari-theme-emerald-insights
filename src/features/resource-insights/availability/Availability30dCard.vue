@@ -62,21 +62,30 @@ defineExpose({
       <div class="p-3 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 mb-3">
         <Icon icon="lucide:plug-zap" class="w-8 h-8" />
       </div>
-      <p class="font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-        在线率历史不可用
+      <p class="font-semibold text-neutral-700 dark:text-neutral-300 mb-1">
+        在线率历史未就绪（已优雅降级）
       </p>
-      <p class="text-neutral-600 dark:text-neutral-400 max-w-[260px] mb-3">
-        安装 Availability History 插件后即可开始记录精确在线率历史。
+      <p class="text-neutral-600 dark:text-neutral-400 max-w-[320px] mb-3.5 leading-relaxed">
+        当前未检测到配套插件。您可前往 Komari 管理后台<b>「插件商店」</b>直接搜索并安装 <code class="px-1 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 font-mono text-emerald-600 dark:text-emerald-400 font-semibold">Availability History</code>；亦可通过 GitHub 手动下载安装，以此解锁完整的 30 天真实在线率体验。
       </p>
-      <a
-        href="https://github.com/Chen017/komari-plugin-availability-history"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-medium transition-colors"
-      >
-        <Icon icon="lucide:external-link" class="w-3.5 h-3.5" />
-        <span>查看安装说明</span>
-      </a>
+      <div class="flex items-center gap-2 flex-wrap justify-center">
+        <a
+          href="/admin"
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium transition-colors shadow-xs"
+        >
+          <Icon icon="lucide:shopping-bag" class="w-3.5 h-3.5" />
+          <span>前往插件商店安装</span>
+        </a>
+        <a
+          href="https://github.com/Chen017/komari-plugin-availability-history"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 font-medium transition-colors"
+        >
+          <Icon icon="lucide:external-link" class="w-3.5 h-3.5" />
+          <span>GitHub 手动安装</span>
+        </a>
+      </div>
     </div>
 
     <!-- Error notice -->

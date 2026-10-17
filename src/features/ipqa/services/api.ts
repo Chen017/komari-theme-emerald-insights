@@ -13,7 +13,7 @@ const REQUEST_TIMEOUT = 10_000
 
 export class IpqaApiError extends Error {
   constructor(public kind: 'not-installed' | 'unavailable') {
-    super(kind === 'not-installed' ? '未检测到 IPQA 插件，请确认插件已安装并运行' : 'IPQA 数据更新失败，请检查连接后重试')
+    super(kind === 'not-installed' ? '未检测到 IPQA Alert Report 插件，强烈建议安装以获得完整的 IP 质量与流媒体/AI 解锁体验' : 'IPQA 数据更新失败，请检查连接后重试')
     this.name = 'IpqaApiError'
   }
 }
