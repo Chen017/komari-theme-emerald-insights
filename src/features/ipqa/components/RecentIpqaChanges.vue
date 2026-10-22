@@ -35,7 +35,7 @@ function getSeverityBadge(sev: string): { label: string, color: string } {
 
     <div v-if="changes.length === 0" class="py-6 text-center text-xs text-neutral-600 dark:text-neutral-400">
       <Icon icon="lucide:shield-check" class="w-6 h-6 mx-auto mb-1.5 opacity-40 text-emerald-500" />
-      <span>所有节点 IP 质量与解锁状态保持稳定，暂无新增变动</span>
+      <span>暂无符合插件告警等级的近期变动记录</span>
     </div>
 
     <div v-else class="space-y-2 max-h-[260px] overflow-y-auto pr-1">

@@ -1,7 +1,7 @@
 import type { MaybeRefOrGetter } from 'vue'
 import { useThrottleFn } from '@vueuse/core'
 import { computed, onScopeDispose, ref, shallowRef, toValue, watch } from 'vue'
-import { getSharedRpc } from '@/utils/rpc'
+import { getSharedRpc } from '../utils/rpc'
 
 export interface NodePingHistoryPoint {
   time: string
@@ -58,7 +58,7 @@ export interface NodePingPerTaskStat {
 }
 
 export const NODE_PING_BAR_COUNT = 10
-const CACHE_VERSION = 6
+const CACHE_VERSION = 7
 const CACHE_KEY_PREFIX = 'komari-theme-emerald:node-ping-stats'
 const FULL_LOSS_EPSILON = 1e-6
 const PING_RECORD_REFRESH_INTERVAL_MS = 60_000
@@ -110,7 +110,7 @@ function getIncludedTaskIds(records: PingRecord[]): Set<number> {
 
   return new Set(
     [...recordSummaries.entries()]
-      .filter(([, summary]) => summary.total > 0 && summary.success > 0)
+      .filter(([, summary]) => summary.total > 0)
       .map(([taskId]) => taskId),
   )
 }
@@ -355,7 +355,9 @@ function getPercentile(values: number[], percentile: number): number | null {
   return lowerValue + (upperValue - lowerValue) * (position - lowerIndex)
 }
 
-function buildStats(records: PingRecord[], tasks: PingTaskInfo[]): NodePingStatsState {
+export function buildStats(records: PingRecord[], tasks: PingTaskInfo[]): NodePingStatsState {
+  // -1 is an actual failed probe; other negative sentinels are missing observations.
+  records = records.filter(record => Number.isFinite(record.value) && record.value >= -1)
   const includedTaskIds = getIncludedTaskIds(records)
 
   if (!includedTaskIds.size)
@@ -380,8 +382,10 @@ function buildStats(records: PingRecord[], tasks: PingTaskInfo[]): NodePingStats
       .map(record => record.value)
       .filter(value => value >= 0)
 
-    if (!validValues.length)
+    if (!validValues.length) {
+      taskLossValues.push(100)
       continue
+    }
 
     latencyValues.push(average(validValues))
     taskLossValues.push((recordsByTask.length - validValues.length) / recordsByTask.length * 100)
@@ -402,7 +406,7 @@ function buildStats(records: PingRecord[], tasks: PingTaskInfo[]): NodePingStats
     .map(point => point.loss)
     .filter(isFiniteNumber)
 
-  const avgLatency = latencyValues.length ? average(latencyValues) : average(historyLatencyValues)
+  const avgLatency = latencyValues.length ? average(latencyValues) : (historyLatencyValues.length ? average(historyLatencyValues) : -1)
   const avgLoss = taskLossValues.length ? average(taskLossValues) : average(historyLossValues)
   const avgVolatility = average(volatilityValues)
   const hasData = history.length > 0 || latencyValues.length > 0 || taskLossValues.length > 0

@@ -3,6 +3,7 @@ import type { NodePingPerTaskStat } from '@/composables/useNodePingStats'
 import { computed, toValue } from 'vue'
 import { NODE_PING_BAR_COUNT, useNodePingStats } from '@/composables/useNodePingStats'
 import { useAppStore } from '@/stores/app'
+import { useNodesStore } from '@/stores/nodes'
 import { formatDateTime } from '@/utils/helper'
 
 export type NodePingMetric = 'latency' | 'loss'
@@ -88,7 +89,8 @@ export function useNodePingDisplay(
   // record fields for compatibility only. They can report records as disabled
   // even when ping metrics are available, so only an explicit caller option
   // should prevent the query.
-  const pingStatsEnabled = computed(() => options.enabled === undefined || toValue(options.enabled))
+  const nodesStore = useNodesStore()
+  const pingStatsEnabled = computed(() => nodesStore.nodesByUuid.get(toValue(uuid))?.online !== false && (options.enabled === undefined || toValue(options.enabled)))
 
   const pingRecordsQueryHours = computed(() => RECENT_PING_RECORDS_QUERY_HOURS)
 
@@ -146,7 +148,7 @@ export function useNodePingDisplay(
 
   const latencyDisplay = computed(() => {
     if (pingStats.hasData.value)
-      return `${Math.round(pingStats.avgLatency.value)} ms`
+      return pingStats.avgLatency.value >= 0 ? `${Math.round(pingStats.avgLatency.value)} ms` : '--'
     if (pingStats.loading.value)
       return options.loadingDisplayText ?? '加载中'
     return options.emptyDisplayText ?? '-'

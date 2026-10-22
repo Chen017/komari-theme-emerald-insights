@@ -10,7 +10,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useBackgroundSurface } from '@/composables/useBackgroundSurface'
 import { useAppStore } from '@/stores/app'
-import { cutPeakValues, interpolateNullsLinear } from '@/utils/recordHelper'
+import { cutPeakValues, insertObservationGaps } from '@/utils/recordHelper'
 import { getSharedRpc, RpcError } from '@/utils/rpc'
 import '@/utils/echarts' // 共享 ECharts 配置
 
@@ -493,7 +493,11 @@ const mergedData = computed(() => {
     }
   }
 
-  return merged.slice(startIdx)
+  const intervalMs = Math.max(
+    Math.ceil(hours * 3600_000 / HISTORY_MAX_POINTS),
+    Math.min(...tasks.value.map(task => (task.interval && task.interval > 0 ? task.interval : 60) * 1000), 60_000),
+  )
+  return insertObservationGaps(merged.slice(startIdx), tasks.value.map(task => String(task.id)), intervalMs)
 })
 
 const chartData = computed(() => {
@@ -507,15 +511,7 @@ const chartData = computed(() => {
     data = cutPeakValues(data, selectedKeys)
   }
 
-  if (selectedKeys.length > 0 && data.length > 0) {
-    // 长范围降采样后桶间隔会变大，按查询跨度放宽插值上限，避免 7 天+ 曲线被硬截断
-    const bucketMs = Math.ceil((selectedHours.value * 3600_000) / HISTORY_MAX_POINTS)
-    data = interpolateNullsLinear(data, selectedKeys, {
-      maxGapMultiplier: 6,
-      minCapMs: 2 * 60_000,
-      maxCapMs: Math.max(30 * 60_000, bucketMs * 6),
-    })
-  }
+  // Preserve missing observations and failed probes as gaps; never invent latency.
 
   return data
 })
@@ -1005,7 +1001,7 @@ const pingChartOption = computed(() => {
     },
     graphic: [
       // 无丢包时的状态反馈提示
-      ...(showLoss.value && totalLossMarkersCount.value === 0 && data.length > 0
+      ...(showLoss.value && totalLossMarkersCount.value === 0 && data.length > 0 && remoteData.value.some(record => selectedTaskIds.value.includes(record.task_id) && record.value >= 0)
         ? [
             {
               type: 'text' as const,

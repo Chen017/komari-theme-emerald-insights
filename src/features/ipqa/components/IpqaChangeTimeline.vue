@@ -43,7 +43,7 @@ function getSeverityBadge(sev: string): { label: string, color: string } {
 
     <div v-if="filteredChanges.length === 0" class="py-8 text-center text-xs text-neutral-600 dark:text-neutral-400">
       <Icon icon="lucide:shield-check" class="w-8 h-8 mx-auto mb-2 opacity-40 text-emerald-500" />
-      <span>该节点在所选历史周期内未检出属性或评级变动，保持稳定。</span>
+      <span>该节点在所选历史周期内暂无符合插件告警等级的变动记录。</span>
     </div>
 
     <div v-else class="space-y-2.5 max-h-[400px] overflow-y-auto pr-1">

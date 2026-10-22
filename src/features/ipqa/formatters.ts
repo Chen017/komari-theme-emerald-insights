@@ -81,6 +81,8 @@ export function evaluateProviderScore(
   tagLabel: string
 } {
   // If structured classifiedScore is already provided from backend, use it directly
+  if (classifiedScore && !classifiedScore.available)
+    return { text: '—', cls: getScoreCls('Unknown'), category: 'Unknown', tagLabel: '无数据' }
   if (classifiedScore && classifiedScore.available && val !== null && val !== undefined && val !== 'null' && val !== '') {
     const category = classifiedScore.categoryKey
     const tagLabel = classifiedScore.categoryLabel || getRiskLabel(category)
@@ -113,6 +115,9 @@ export function evaluateProviderScore(
   }
 
   const str = String(val).trim()
+  const numeric = Number(str.replace('%', ''))
+  if (!str || (Number.isFinite(numeric) && (numeric < 0 || numeric > 100)))
+    return { text: '—', cls: getScoreCls('Unknown'), category: 'Unknown', tagLabel: '无数据' }
   const key = providerKey.toUpperCase()
 
   // 1. ipapi: percentage format (e.g. "2.73%", "18.16%", "0.73%")
@@ -247,7 +252,7 @@ export function evaluateProviderScore(
     return { text: str, cls: getScoreCls('Critical'), category: 'Critical', tagLabel: '极高风险' }
   }
 
-  return { text: str, cls: 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400 font-medium', category: 'Low', tagLabel: str }
+  return { text: str, cls: 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400 font-medium', category: 'Unknown', tagLabel: '无数据' }
 }
 
 /**

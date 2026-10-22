@@ -5,6 +5,19 @@
 
 import dayjs from 'dayjs'
 
+/** Preserve long observation gaps without inventing successes or packet loss. */
+export function insertObservationGaps(rows: Record<string, unknown>[], keys: string[], intervalMs: number): Record<string, unknown>[] {
+  const result: Record<string, unknown>[] = []
+  for (const row of rows) {
+    const previous = result.at(-1)
+    const previousMs = previous ? Date.parse(String(previous.time)) : Number.NaN
+    if (Number.isFinite(previousMs) && Date.parse(String(row.time)) - previousMs > intervalMs * 3)
+      result.push({ ...Object.fromEntries(keys.map(key => [key, null])), time: new Date(previousMs + intervalMs).toISOString() })
+    result.push(row)
+  }
+  return result
+}
+
 /** 负载记录格式 */
 export interface RecordFormat {
   client: string
@@ -139,7 +152,10 @@ export function fillMissingTimePoints<T extends { time?: string, updated_at?: st
       currentData
       && Math.abs(currentData.timeMs - t) <= matchToleranceMs
     ) {
-      found = currentData.item
+      // Prefer the nearest sample, including a later point in the same tolerance.
+      while (dataIdx + 1 < timedData.length && Math.abs(timedData[dataIdx + 1]!.timeMs - t) < Math.abs(timedData[dataIdx]!.timeMs - t)) dataIdx++
+      found = timedData[dataIdx]!.item
+      dataIdx++
     }
 
     if (found) {

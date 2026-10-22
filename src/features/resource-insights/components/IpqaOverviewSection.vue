@@ -45,7 +45,7 @@ const displayOverview = computed<IpqaFleetOverview | null>(() => {
   const totalNodes = props.nodes.length
   const ipqaNodes = filteredNodes.filter(n => n.status !== 'no_archive').length
   const nodesWithRisk = filteredNodes.filter(n =>
-    n.highest_risk?.category && n.highest_risk.category !== 'Unknown',
+    ['Medium', 'High', 'Critical'].includes(n.highest_risk?.category ?? ''),
   ).length
   const nodesWithChangesToday = filteredNodes.filter(n => (n.changes_today ?? 0) > 0).length
 

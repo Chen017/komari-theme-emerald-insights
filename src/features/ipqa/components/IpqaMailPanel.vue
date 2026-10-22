@@ -14,16 +14,16 @@ const dnsbl = computed(() => {
 
 const blacklistedCount = computed(() => {
   if (!dnsbl.value)
-    return 0
-  const cnt = Number(dnsbl.value.Blacklisted ?? dnsbl.value.blacklisted ?? 0)
-  return Number.isFinite(cnt) ? cnt : 0
+    return null
+  const cnt = Number(dnsbl.value.Blacklisted ?? dnsbl.value.blacklisted ?? Number.NaN)
+  return Number.isFinite(cnt) && cnt >= 0 ? cnt : null
 })
 
 const totalDnsbl = computed(() => {
   if (!dnsbl.value)
-    return 0
-  const cnt = Number(dnsbl.value.Count ?? dnsbl.value.count ?? 0)
-  return Number.isFinite(cnt) ? cnt : 0
+    return null
+  const cnt = Number(dnsbl.value.Total ?? dnsbl.value.total ?? dnsbl.value.Count ?? dnsbl.value.count ?? Number.NaN)
+  return Number.isFinite(cnt) && cnt >= 0 ? cnt : null
 })
 </script>
 
@@ -45,12 +45,12 @@ const totalDnsbl = computed(() => {
           </div>
           <div
             class="text-xl font-bold"
-            :class="blacklistedCount > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'"
+            :class="blacklistedCount !== null && blacklistedCount > 0 ? 'text-rose-600 dark:text-rose-400' : blacklistedCount === null || !totalDnsbl ? 'text-neutral-400' : 'text-emerald-600 dark:text-emerald-400'"
           >
-            {{ blacklistedCount }} <span class="text-xs font-normal text-neutral-400">/ {{ totalDnsbl || '--' }} 项数据库</span>
+            {{ blacklistedCount ?? '--' }} <span class="text-xs font-normal text-neutral-400">/ {{ totalDnsbl || '--' }} 项数据库</span>
           </div>
           <div class="text-xs text-neutral-400 mt-0.5">
-            {{ blacklistedCount === 0 ? 'IP 信誉良好，未被列入黑名单' : '已被部分反垃圾邮件数据库列入' }}
+            {{ blacklistedCount === null || !totalDnsbl ? '未检测或检测失败' : blacklistedCount === 0 ? 'IP 信誉良好，未被列入黑名单' : '已被部分反垃圾邮件数据库列入' }}
           </div>
         </div>
 

@@ -191,7 +191,15 @@ export function calculateResetWindow(
   }
 
   const maxDayInResetMonth = getLastDayOfMonth(resetYear, resetMonth - 1)
-  const effectiveResetDay = Math.min(resetDay, maxDayInResetMonth)
+  const overflow = resetDay > maxDayInResetMonth
+  if (overflow) {
+    resetMonth++
+    if (resetMonth > 12) {
+      resetMonth = 1
+      resetYear++
+    }
+  }
+  const effectiveResetDay = overflow ? 1 : resetDay
 
   const startCivilInAgent: CivilDate = {
     year: resetYear,

@@ -191,7 +191,12 @@ function statusToRecordFormat(records: StatusRecord[]): RecordFormat[] {
   }))
 }
 
+let fetchGeneration = 0
+
 async function fetchRecentData() {
+  const generation = ++fetchGeneration
+  const targetUuid = props.uuid
+  const targetView = selectedView.value
   if (!props.uuid)
     return
 
@@ -203,22 +208,31 @@ async function fetchRecentData() {
 
   try {
     const result = await rpc.getNodeRecentStatus(props.uuid)
+    if (generation !== fetchGeneration || targetUuid !== props.uuid || targetView !== selectedView.value)
+      return
     const records = result?.records || []
     records.sort((a, b) => dayjs(a.time).valueOf() - dayjs(b.time).valueOf())
     const maxLength = 150
     remoteData.value = records.slice(-maxLength)
   }
   catch (err) {
+    if (generation !== fetchGeneration)
+      return
     error.value = err instanceof Error ? err.message : '获取数据失败'
     remoteData.value = []
   }
   finally {
-    loading.value = false
-    isInitialLoad.value = false
+    if (generation === fetchGeneration)
+      loading.value = false
+    if (generation === fetchGeneration)
+      isInitialLoad.value = false
   }
 }
 
 async function fetchHistoryData() {
+  const generation = ++fetchGeneration
+  const targetUuid = props.uuid
+  const targetView = selectedView.value
   if (!props.uuid)
     return
 
@@ -236,6 +250,8 @@ async function fetchHistoryData() {
     }
 
     const resp = await response.json()
+    if (generation !== fetchGeneration || targetUuid !== props.uuid || targetView !== selectedView.value)
+      return
     const records = resp.data?.records || []
 
     // 按时间排序
@@ -246,11 +262,14 @@ async function fetchHistoryData() {
     remoteData.value = records
   }
   catch (err) {
+    if (generation !== fetchGeneration)
+      return
     error.value = err instanceof Error ? err.message : '获取数据失败'
     remoteData.value = []
   }
   finally {
-    loading.value = false
+    if (generation === fetchGeneration)
+      loading.value = false
   }
 }
 

@@ -208,13 +208,13 @@ console.log('--- Running traffic aggregator & trend tests ---')
   assert.strictEqual(win25.diffDays, 29)
   assert.strictEqual(win25.resetDay, 25)
 
-  // Short month: reset day 31 evaluated in March -> Feb 28 to March 10
+  // Short month: reset day 31 evaluated in March -> March 1 to March 10 (Agent rollover)
   const marchDate = new Date('2026-03-10T12:00:00Z')
   const winShort = calculateResetWindow(31, marchDate, 'UTC')
-  assert.strictEqual(winShort.startDate, '2026-02-28')
+  assert.strictEqual(winShort.startDate, '2026-03-01')
   assert.strictEqual(winShort.endDate, '2026-03-10')
-  assert.strictEqual(winShort.diffDays, 11)
-  assert.strictEqual(winShort.resetDay, 28) // clamped to Feb 28
+  assert.strictEqual(winShort.diffDays, 10)
+  assert.strictEqual(winShort.resetDay, 1) // rolled forward to March 1
 
   console.log('✓ Section 25 reset window calculation tests pass (Day 1, 18, 25 & short month)')
 }
