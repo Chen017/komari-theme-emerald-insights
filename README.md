@@ -48,6 +48,10 @@ Modern Komari theme with Resource Insights, traffic trends, exact availability, 
 
 ---
 
+## Cloudflare 与私有部署
+
+如果希望整个 Komari 面板仅自己可见，并让 Agent 通信经过 Cloudflare，可参考[Cloudflare Tunnel + Zero Trust 完整配置与重装恢复教程](docs/CLOUDFLARE-ZERO-TRUST.md)。教程涵盖 14 天面板会话、每节点 Service Token、本机代理、Podman/NAT 兼容、源站封堵、验收与回滚；域名和凭据均使用示例，需按自己的环境替换。这是可选部署方案，不是使用主题的前提。
+
 ## 使用与配置
 
 Komari Emerald Insights 在传统监控基础上扩展了四大核心模块：**流量趋势**、**近 30 天在线率**、**IPQA 质量分析** 与 **成本与续费**。本节详细说明各特性的依赖关系与配置方法。
