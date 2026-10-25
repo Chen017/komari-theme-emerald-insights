@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import type { HistorySection } from '../history'
 import type { IpqaDailyPairedReport, IpqaNormalizedReport, IpqaSemanticChange } from '../types'
 import { Icon } from '@iconify/vue'
-import { computed, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useNodesStore } from '@/stores/nodes'
 import IpqaArchiveNavigator from '../components/IpqaArchiveNavigator.vue'
@@ -20,6 +21,8 @@ import {
 } from '../services/api'
 
 defineOptions({ name: 'IpqaNodeDetailPage' })
+
+const IpqaHistoryExplorer = defineAsyncComponent(() => import('../components/IpqaHistoryExplorer.vue'))
 
 const route = useRoute()
 const router = useRouter()
@@ -65,9 +68,14 @@ const tabs: Array<{ key: TabKey, label: string, icon: string }> = [
   { key: 'factor', label: '风险因子', icon: 'lucide:sliders-horizontal' },
   { key: 'media', label: '流媒体与 AI', icon: 'lucide:tv-2' },
   { key: 'mail', label: '邮件与黑名单', icon: 'lucide:mail' },
-  { key: 'changes', label: '历史变动', icon: 'lucide:history' },
+  { key: 'changes', label: '历史分析', icon: 'lucide:history' },
   { key: 'raw', label: '原始归档', icon: 'lucide:code-2' },
 ]
+
+const activeHistorySection = computed<HistorySection | undefined>(() => {
+  const sections: Partial<Record<TabKey, HistorySection>> = { info: 'type', score: 'score', factor: 'factor', media: 'media', mail: 'dnsbl' }
+  return sections[activeTab.value]
+})
 
 let loadGeneration = 0
 let pageGeneration = 0
@@ -282,7 +290,7 @@ const activeNormalizedReport = computed<IpqaNormalizedReport | null>(() => {
     </div>
 
     <!-- Loading State -->
-    <div v-if="loading" class="py-16 text-center text-neutral-400">
+    <div v-if="loading && !currentReport" class="py-16 text-center text-neutral-400">
       <Icon icon="lucide:loader-2" class="w-8 h-8 animate-spin mx-auto mb-2 text-emerald-500" />
       <span class="text-xs">正在加载节点 IPQA 归档数据...</span>
     </div>
@@ -302,7 +310,10 @@ const activeNormalizedReport = computed<IpqaNormalizedReport | null>(() => {
     </div>
 
     <!-- Content -->
-    <div v-else-if="currentReport" class="space-y-5">
+    <div v-else-if="currentReport" class="space-y-5" :aria-busy="loading">
+      <p v-if="loading" role="status" class="text-xs text-emerald-700 dark:text-emerald-300">
+        正在读取所选日期的归档，当前仍显示 {{ currentReport.date }} 快照…
+      </p>
       <!-- Navigator: Date selector + IPv4/IPv6 Switch -->
       <IpqaArchiveNavigator
         :dates="dates"
@@ -338,7 +349,9 @@ const activeNormalizedReport = computed<IpqaNormalizedReport | null>(() => {
 
       <!-- Tab Content: Changes tab (doesn't require normalized report) -->
       <div v-if="activeTab === 'changes'">
-        <IpqaChangeTimeline :changes="nodeChanges" />
+        <p class="text-xs text-neutral-500 dark:text-neutral-400">
+          下方提供各项目独立时间轴与任意两日快照对比；页面末尾为近期语义变动记录。
+        </p>
       </div>
 
       <!-- Other tabs require active normalized report -->
@@ -365,6 +378,21 @@ const activeNormalizedReport = computed<IpqaNormalizedReport | null>(() => {
         <!-- Tab 7: Raw Details -->
         <IpqaRawDetails v-else-if="activeTab === 'raw'" :report="activeNormalizedReport" />
       </div>
+
+      <IpqaHistoryExplorer
+        v-if="activeTab !== 'raw'"
+        :uuid="uuid"
+        :dates="dates"
+        :current-report="currentReport"
+        :ip-version="activeIpVersion"
+        :section="activeHistorySection"
+        :open="activeTab === 'changes'"
+        :has-more="hasMoreArchives"
+        :loading-more="loadingMore"
+        @select-date="onDateChange"
+        @load-more="loadMoreArchives"
+      />
+      <IpqaChangeTimeline v-if="activeTab === 'changes'" :changes="nodeChanges.filter(change => change.ipVersion === activeIpVersion)" />
     </div>
   </div>
 </template>

@@ -26,6 +26,8 @@ Modern Komari theme with Resource Insights, traffic trends, exact availability, 
   - **续费时间轴与节点成本表**：支持按 30 天、90 天、已过期、无到期日或全部节点筛选。
 - **IPQA 节点档案与历史 (/ip-quality/:uuid)**：
   - 支持按历史归档日期逐日回溯，展示 IP 归属/ASN/ISP、各大评分引擎（IP2Location、Scamalytics、ipapi、AbuseIPDB、IPQS、DB-IP）、风险因子矩阵、流媒体与 AI 服务解锁、邮件端口与 DNSBL 黑名单检测、语义变更记录及原始 JSON 查看。
+  - **独立历史时间轴**：IP 类型、评分、因子、流媒体/AI、DNSBL、邮件连通性与 IP 归属分别进行变化感知采样，优先保留实际变化日，并支持展开完整时间轴。
+  - **两日快照对比**：任选已加载的两个归档日期，查看变化前后值；支持交换日期、显示未变化项目、IPv4/IPv6 独立分析与移动端对比卡片。详见[历史分析说明](docs/IPQA-HISTORY.md)。
 - **节点详情 IPQA 快照**：
   - 在常规节点详情页嵌入轻量级 IP Quality 快照卡片，支持一键直达完整档案。
 

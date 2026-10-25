@@ -7,11 +7,11 @@
     "name": "Chen017",
     "url": "https://github.com/Chen017"
   },
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/Chen017/komari-theme-emerald-insights.git"
   },
-  "license": "MIT",
   "engines": {
     "node": "^20.19.0 || >=22.12.0",
     "bun": ">=1.2.0"
@@ -19,6 +19,7 @@
   "scripts": {
     "dev": "vite",
     "build": "run-p type-check \"build-only {@}\" --",
+    "build:beta": "run-p type-check \"build-only --mode beta\"",
     "preview": "vite preview",
     "build-only": "vite build",
     "type-check": "vue-tsc --build",

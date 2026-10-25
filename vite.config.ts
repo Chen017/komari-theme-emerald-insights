@@ -3,6 +3,7 @@ import { execSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { resolve } from 'node:path'
+import process from 'node:process'
 import { fileURLToPath, URL } from 'node:url'
 import tailwindcss from '@tailwindcss/vite'
 import vue from '@vitejs/plugin-vue'
@@ -35,12 +36,12 @@ function shouldIgnoreRollupWarning(warning: { code?: string, id?: string }): boo
  * ├── preview.png
  * └── dist/
  */
-function komariThemeZip(): Plugin {
+function komariThemeZip(beta: boolean, version: string, hash: string): Plugin {
   return {
     name: 'komari-theme-zip',
     apply: 'build',
     closeBundle: async () => {
-      const zipFileName = 'komari-theme-emerald-insights.zip'
+      const zipFileName = beta ? `komari-theme-emerald-insights-beta-${hash}.zip` : 'komari-theme-emerald-insights.zip'
       const distDir = resolve(__dirname, 'dist')
       const themeJsonPath = resolve(__dirname, 'komari-theme.json')
       const previewPath = resolve(__dirname, 'docs/preview.png')
@@ -55,7 +56,10 @@ function komariThemeZip(): Plugin {
       const allFiles = fs.readdirSync(__dirname)
       for (const f of allFiles) {
         if (f.startsWith('komari-theme-emerald-build-') && f.endsWith('.zip')) {
-          try { fs.unlinkSync(resolve(__dirname, f)) } catch {}
+          try {
+            fs.unlinkSync(resolve(__dirname, f))
+          }
+          catch {}
         }
       }
 
@@ -70,11 +74,12 @@ function komariThemeZip(): Plugin {
           // Push to Desktop
           const desktopDir = resolve(process.env.USERPROFILE || 'C:\\Users\\y2hlb', 'Desktop')
           if (existsSync(desktopDir)) {
-            const desktopZip = resolve(desktopDir, 'komari-theme-emerald.zip')
+            const desktopZip = resolve(desktopDir, beta ? zipFileName : 'komari-theme-emerald.zip')
             try {
               fs.copyFileSync(outputPath, desktopZip)
               console.log(`[komari-theme-zip] Pushed to Desktop: ${desktopZip}`)
-            } catch (err) {
+            }
+            catch (err) {
               console.error('[komari-theme-zip] Failed to copy to Desktop:', err)
             }
           }
@@ -89,7 +94,13 @@ function komariThemeZip(): Plugin {
         archive.pipe(output)
 
         if (existsSync(themeJsonPath)) {
-          archive.file(themeJsonPath, { name: 'komari-theme.json' })
+          if (beta) {
+            const manifest = JSON.parse(fs.readFileSync(themeJsonPath, 'utf8'))
+            archive.append(JSON.stringify({ ...manifest, name: `${manifest.name} (Beta)`, version }, null, 2), { name: 'komari-theme.json' })
+          }
+          else {
+            archive.file(themeJsonPath, { name: 'komari-theme.json' })
+          }
         }
 
         if (existsSync(previewPath)) {
@@ -106,41 +117,46 @@ function komariThemeZip(): Plugin {
 
 const packageJson = require('./package.json')
 
-export default defineConfig({
-  define: {
-    __BUILD_VERSION__: JSON.stringify(packageJson.version),
-    __BUILD_GIT_HASH__: JSON.stringify(getCommitHash()),
-  },
-  plugins: [
-    vue(),
-    vueDevTools(),
-    tailwindcss(),
-    komariThemeZip(),
-  ],
-  resolve: {
-    alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url)),
+export default defineConfig(({ mode }) => {
+  const beta = mode === 'beta'
+  const hash = getCommitHash()
+  const version = beta ? `${packageJson.version}-beta.ipqa-history.g${hash}` : packageJson.version
+  return {
+    define: {
+      __BUILD_VERSION__: JSON.stringify(version),
+      __BUILD_GIT_HASH__: JSON.stringify(hash),
     },
-  },
-  server: {
-    host: '0.0.0.0',
-  },
-  build: {
-    chunkSizeWarningLimit: 600,
-    rollupOptions: {
-      onwarn(warning, defaultHandler) {
-        if (shouldIgnoreRollupWarning(warning))
-          return
-        defaultHandler(warning)
+    plugins: [
+      vue(),
+      vueDevTools(),
+      tailwindcss(),
+      komariThemeZip(beta, version, hash),
+    ],
+    resolve: {
+      alias: {
+        '@': fileURLToPath(new URL('./src', import.meta.url)),
       },
-      output: {
-        manualChunks: {
-          'vue-vendor': ['vue', 'vue-router', 'pinia'],
-          'echarts': ['echarts', 'vue-echarts'],
-          'reka-ui': ['reka-ui'],
-          'vueuse': ['@vueuse/core'],
+    },
+    server: {
+      host: '0.0.0.0',
+    },
+    build: {
+      chunkSizeWarningLimit: 600,
+      rollupOptions: {
+        onwarn(warning, defaultHandler) {
+          if (shouldIgnoreRollupWarning(warning))
+            return
+          defaultHandler(warning)
+        },
+        output: {
+          manualChunks: {
+            'vue-vendor': ['vue', 'vue-router', 'pinia'],
+            'echarts': ['echarts', 'vue-echarts'],
+            'reka-ui': ['reka-ui'],
+            'vueuse': ['@vueuse/core'],
+          },
         },
       },
     },
-  },
+  }
 })
