@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { loadResourceInsightsPage } from './resourceInsights'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -16,7 +17,7 @@ const router = createRouter({
     {
       path: '/resource-insights',
       name: 'resource-insights',
-      component: () => import('@/features/resource-insights/pages/ResourceInsightsPage.vue'),
+      component: loadResourceInsightsPage,
     },
     {
       path: '/cost-renewal',

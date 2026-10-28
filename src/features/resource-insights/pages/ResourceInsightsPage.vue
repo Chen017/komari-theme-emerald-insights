@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import { Icon } from '@iconify/vue'
-import { ref } from 'vue'
+import { defineAsyncComponent, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useNodesStore } from '@/stores/nodes'
 import { refreshAllNodes } from '@/utils/init'
 import Availability30dCard from '../availability/Availability30dCard.vue'
 import CostSummaryCard from '../components/CostSummaryCard.vue'
 import IpqaOverviewSection from '../components/IpqaOverviewSection.vue'
-import TrafficTrendCard from '../traffic/TrafficTrendCard.vue'
 
 defineOptions({ name: 'ResourceInsightsPage' })
+
+// The page heading and other cards must not wait for the chart engine.
+const TrafficTrendCard = defineAsyncComponent(() => import('../traffic/TrafficTrendCard.vue'))
 
 const nodesStore = useNodesStore()
 
@@ -85,6 +87,15 @@ async function handleRefreshAll() {
     <!-- Top Grid: Traffic Trends (left) + 30-day Uptime (right) -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
       <div class="lg:col-span-7">
+        <div v-if="!trafficCardRef" role="status" aria-live="polite" class="min-h-96 rounded-2xl border border-neutral-200/80 bg-white/80 p-5 dark:border-neutral-800/80 dark:bg-neutral-900/80">
+          <h2 class="font-semibold text-neutral-800 dark:text-neutral-100">
+            每日流量趋势
+          </h2>
+          <p class="mt-3 text-xs text-neutral-500 dark:text-neutral-400">
+            正在加载流量图表…
+          </p>
+          <div aria-hidden="true" class="mt-6 h-56 animate-pulse rounded-xl bg-neutral-100 dark:bg-neutral-800/60" />
+        </div>
         <TrafficTrendCard ref="trafficCardRef" :nodes="nodesStore.nodes" :loading="refreshing" />
       </div>
       <div class="lg:col-span-5">

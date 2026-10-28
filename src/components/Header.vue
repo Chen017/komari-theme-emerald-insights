@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { Icon } from '@iconify/vue'
-import { computed, inject, ref } from 'vue'
+import { computed, inject, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { DataTooltip } from '@/components/ui/data-tooltip'
+import { loadResourceInsightsPage } from '@/router/resourceInsights'
 import { useAppStore } from '@/stores/app'
 
 const router = useRouter()
@@ -35,6 +36,27 @@ const navActions = computed(() => {
   }
   return actions
 })
+
+function prefetchNavigation(target: string) {
+  if (target === '/resource-insights')
+    void loadResourceInsightsPage().catch(() => {})
+}
+
+watch(() => !appStore.loading && appStore.enableResourceInsights, (enabled, _previous, onCleanup) => {
+  if (!enabled)
+    return
+  // Warm only the lightweight page module once startup has finished. Charts
+  // and data requests still start when the user actually opens the overview.
+  const preload = () => prefetchNavigation('/resource-insights')
+  if (typeof window.requestIdleCallback === 'function') {
+    const id = window.requestIdleCallback(preload, { timeout: 1500 })
+    onCleanup(() => window.cancelIdleCallback(id))
+  }
+  else {
+    const id = setTimeout(preload, 300)
+    onCleanup(() => clearTimeout(id))
+  }
+}, { immediate: true })
 
 const actionButtons = computed(() => {
   const buttons = [
@@ -98,6 +120,9 @@ const sitename = computed(() => appStore.publicSettings?.sitename || 'Komari Mon
             :aria-label="nav.title"
             :aria-current="nav.active ? 'page' : undefined"
             :class="nav.active ? 'relative border-current bg-accent font-semibold after:absolute after:bottom-0.5 after:h-0.5 after:w-3 after:rounded-full after:bg-current' : ''"
+            @pointerenter="prefetchNavigation(nav.route)"
+            @focus="prefetchNavigation(nav.route)"
+            @pointerdown="prefetchNavigation(nav.route)"
             @click="router.push(nav.route)"
           >
             <Icon :icon="nav.icon" :width="18" :height="18" />
