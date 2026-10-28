@@ -2,7 +2,7 @@
 import type { HistorySection } from '../history'
 import type { IpqaDailyPairedReport, IpqaNormalizedReport, IpqaSemanticChange } from '../types'
 import { Icon } from '@iconify/vue'
-import { computed, defineAsyncComponent, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useNodesStore } from '@/stores/nodes'
 import IpqaArchiveNavigator from '../components/IpqaArchiveNavigator.vue'
@@ -19,6 +19,7 @@ import {
   fetchNodeChanges,
   fetchNodeLatest,
 } from '../services/api'
+import { createArchiveReader } from '../services/archiveReader'
 
 defineOptions({ name: 'IpqaNodeDetailPage' })
 
@@ -49,9 +50,10 @@ const backTarget = computed(() => {
 const loading = ref(true)
 const dates = ref<string[]>([])
 const currentDate = ref<string>('')
-const currentReport = ref<IpqaDailyPairedReport | null>(null)
+const currentReport = shallowRef<IpqaDailyPairedReport | null>(null)
 const activeIpVersion = ref<'IPv4' | 'IPv6'>('IPv4')
 const nodeChanges = ref<IpqaSemanticChange[]>([])
+const changesLoading = ref(false)
 const hasMoreArchives = ref(false)
 const loadingMore = ref(false)
 const archiveCursor = ref<string | undefined>()
@@ -79,7 +81,34 @@ const activeHistorySection = computed<HistorySection | undefined>(() => {
 
 let loadGeneration = 0
 let pageGeneration = 0
+let changesGeneration = 0
+const archiveReader = createArchiveReader(fetchNodeArchive)
 const archiveDatePattern = /^\d{4}-\d{2}-\d{2}$/
+
+async function loadChanges(targetUuid: string) {
+  const token = ++changesGeneration
+  changesLoading.value = true
+  try {
+    const changes = await fetchNodeChanges(targetUuid)
+    if (token === changesGeneration)
+      nodeChanges.value = changes
+  }
+  catch {
+    if (token === changesGeneration)
+      errorMessage.value = '历史变动更新失败，归档报告仍可查看'
+  }
+  finally {
+    if (token === changesGeneration)
+      changesLoading.value = false
+  }
+}
+
+onBeforeUnmount(() => {
+  loadGeneration++
+  pageGeneration++
+  changesGeneration++
+  archiveReader.clear()
+})
 
 async function loadArchive(targetDate?: string, refreshMetadata = true) {
   const generation = ++loadGeneration
@@ -91,23 +120,18 @@ async function loadArchive(targetDate?: string, refreshMetadata = true) {
     let availableDates = dates.value
 
     if (refreshMetadata) {
+      archiveReader.clear()
       pageGeneration += 1
       loadingMore.value = false
-      const [page, changes] = await Promise.allSettled([
-        fetchNodeArchivePage(targetUuid),
-        fetchNodeChanges(targetUuid),
-      ])
+      // The 30-day change query must not delay the selected snapshot.
+      void loadChanges(targetUuid)
+      const page = await fetchNodeArchivePage(targetUuid)
       if (generation !== loadGeneration)
         return
-      if (page.status === 'rejected')
-        throw page.reason
-      availableDates = page.value.dates
+      availableDates = page.dates
       dates.value = availableDates
-      hasMoreArchives.value = page.value.hasMore
+      hasMoreArchives.value = page.hasMore
       archiveCursor.value = availableDates.at(-1)
-      if (changes.status === 'fulfilled')
-        nodeChanges.value = changes.value
-      else errorMessage.value = '历史变动更新失败，归档报告仍可查看'
     }
 
     if (availableDates.length > 0) {
@@ -115,7 +139,7 @@ async function loadArchive(targetDate?: string, refreshMetadata = true) {
         ? targetDate
         : availableDates[0]!
 
-      const report = await fetchNodeArchive(targetUuid, selected)
+      const report = await archiveReader.read(targetUuid, selected)
       if (generation !== loadGeneration)
         return
 
@@ -384,6 +408,7 @@ const activeNormalizedReport = computed<IpqaNormalizedReport | null>(() => {
         :uuid="uuid"
         :dates="dates"
         :current-report="currentReport"
+        :fetch-report="archiveReader.read"
         :ip-version="activeIpVersion"
         :section="activeHistorySection"
         :open="activeTab === 'changes'"
@@ -392,7 +417,12 @@ const activeNormalizedReport = computed<IpqaNormalizedReport | null>(() => {
         @select-date="onDateChange"
         @load-more="loadMoreArchives"
       />
-      <IpqaChangeTimeline v-if="activeTab === 'changes'" :changes="nodeChanges.filter(change => change.ipVersion === activeIpVersion)" />
+      <template v-if="activeTab === 'changes'">
+        <p v-if="changesLoading" role="status" class="text-xs text-neutral-500 dark:text-neutral-400">
+          正在加载近期变动…
+        </p>
+        <IpqaChangeTimeline v-else :changes="nodeChanges.filter(change => change.ipVersion === activeIpVersion)" />
+      </template>
     </div>
   </div>
 </template>

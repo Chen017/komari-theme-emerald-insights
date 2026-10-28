@@ -444,11 +444,16 @@ export function useNodePingStats(
   const loading = ref(false)
   const error = ref<string | null>(null)
 
-  const resolved = computed(() => ({
-    uuid: toValue(uuid),
-    hours: Math.max(1, Math.floor(toValue(options?.hours) ?? 24)),
-    enabled: toValue(options?.enabled) ?? true,
-  }))
+  const resolved = computed<{ uuid: string, hours: number, enabled: boolean }>((previous) => {
+    const next = {
+      uuid: toValue(uuid),
+      hours: Math.max(1, Math.floor(toValue(options?.hours) ?? 24)),
+      enabled: toValue(options?.enabled) ?? true,
+    }
+    // Live CPU/traffic updates replace the node prop. Keep ping dependencies
+    // stable unless the selected node, range or enabled state actually changes.
+    return previous && previous.uuid === next.uuid && previous.hours === next.hours && previous.enabled === next.enabled ? previous : next
+  })
 
   let activeHours: number | null = null
   let releaseSharedRecords: (() => void) | null = null

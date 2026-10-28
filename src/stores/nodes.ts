@@ -314,10 +314,11 @@ const useNodesStore = defineStore('nodes', () => {
    */
   function updateNodeStatuses(statuses: Record<string, NodeStatus>): void {
     let hasChanges = false
+    const indexes = new Map(nodes.value.map((node, index) => [node.uuid, index]))
 
     Object.entries(statuses).forEach(([uuid, status]) => {
-      const index = nodes.value.findIndex(n => n.uuid === uuid)
-      if (index === -1)
+      const index = indexes.get(uuid)
+      if (index === undefined)
         return
 
       const node = nodes.value[index]

@@ -2,9 +2,8 @@
 import type { HistoryEntry, HistorySection, IpVersion } from '../history'
 import type { IpqaDailyPairedReport } from '../types'
 import { Icon } from '@iconify/vue'
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import { compareSnapshots, historyFieldLabel, historySections, projectSnapshot, protocolReport, snapshotFields } from '../history'
-import { fetchNodeArchive } from '../services/api'
 import { loadArchiveHistory } from '../services/archiveHistory'
 import IpqaHistorySection from './IpqaHistorySection.vue'
 
@@ -12,6 +11,7 @@ const props = defineProps<{
   uuid: string
   dates: string[]
   currentReport: IpqaDailyPairedReport
+  fetchReport: (uuid: string, date: string) => Promise<IpqaDailyPairedReport | null>
   ipVersion: IpVersion
   section?: HistorySection
   open?: boolean
@@ -21,7 +21,7 @@ const props = defineProps<{
 const emit = defineEmits<{ selectDate: [date: string], loadMore: [] }>()
 const expanded = ref(false)
 const loading = ref(false)
-const entries = ref<HistoryEntry[]>([])
+const entries = shallowRef<HistoryEntry[]>([])
 const range = ref('all')
 const beforeDate = ref('')
 const afterDate = ref('')
@@ -49,7 +49,7 @@ async function load() {
   const dates = [...availableDates.value]
   loading.value = true
   const cached = [...entries.value.filter(entry => entry.date !== props.currentReport.date), { date: props.currentReport.date, report: props.currentReport }]
-  const reports = await loadArchiveHistory(dates, date => fetchNodeArchive(targetUuid, date), {
+  const reports = await loadArchiveHistory(dates, date => props.fetchReport(targetUuid, date), {
     cached,
     isCurrent: () => token === generation,
     onProgress: result => entries.value = result,

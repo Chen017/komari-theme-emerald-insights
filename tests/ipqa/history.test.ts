@@ -177,6 +177,14 @@ describe('change-aware keyframes', () => {
 })
 
 describe('archive history loading', () => {
+  it('coalesces fast progress updates without dropping dates or final results', async () => {
+    const dates = Array.from({ length: 30 }, (_, index) => `2026-10-${String(index + 1).padStart(2, '0')}`)
+    const updates: HistoryEntry[][] = []
+    const result = await loadArchiveHistory(dates, async date => report(date), { onProgress: entries => updates.push(entries) })
+    assert.equal(result.length, 30)
+    assert.deepEqual(updates.at(-1), result)
+    assert.ok(updates.length < dates.length)
+  })
   it('bounds concurrency, deduplicates dates, reuses cache and isolates failures', async () => {
     const dates = Array.from({ length: 12 }, (_, index) => `2026-10-${String(index + 1).padStart(2, '0')}`)
     let active = 0

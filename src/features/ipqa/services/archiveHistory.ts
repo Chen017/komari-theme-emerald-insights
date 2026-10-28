@@ -25,6 +25,7 @@ export async function loadArchiveHistory(
     return !report
   })
   let cursor = 0
+  let lastProgressAt = 0
   const snapshot = () => uniqueDates.flatMap(date => results.has(date) ? [results.get(date)!] : [])
   const current = () => options.isCurrent?.() ?? true
   const requestedConcurrency = options.concurrency ?? 4
@@ -42,8 +43,16 @@ export async function loadArchiveHistory(
       if (!current())
         return
       results.set(date, { date, report })
-      options.onProgress?.(snapshot())
+      // Fast cached/network completions should not rebuild every timeline
+      // once per day. Keep progressive results, at most once every 32 ms.
+      if (Date.now() - lastProgressAt >= 32) {
+        options.onProgress?.(snapshot())
+        lastProgressAt = Date.now()
+      }
     }
   }))
-  return snapshot()
+  const finalEntries = snapshot()
+  if (current())
+    options.onProgress?.(finalEntries)
+  return finalEntries
 }

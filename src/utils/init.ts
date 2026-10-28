@@ -75,14 +75,13 @@ class InitManager {
       // 1. 测试后端服务是否正常
       await this.healthCheck()
 
-      // 2. 获取服务端公开属性
-      await this.fetchPublicSettings()
-
-      // 3. 获取用户信息
-      await this.fetchUserInfo()
-
-      // 4. 获取节点信息和最新状态
-      await this.fetchNodesData()
+      // Independent reads share the health check; transport setup still waits
+      // for settings, authentication state and the initial node snapshot.
+      await Promise.all([
+        this.fetchPublicSettings(),
+        this.fetchUserInfo(),
+        this.fetchNodesData(),
+      ])
 
       // 5. 解除加载状态
       this.appStore.loading = false
@@ -484,4 +483,3 @@ export async function refreshAllNodes(): Promise<void> {
     await manager.refreshNodes()
   }
 }
-

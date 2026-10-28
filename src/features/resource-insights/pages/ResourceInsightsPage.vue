@@ -23,7 +23,6 @@ async function handleRefreshAll() {
   if (refreshing.value)
     return
   refreshing.value = true
-  const minDelay = new Promise(resolve => setTimeout(resolve, 600))
   try {
     await Promise.allSettled([
       refreshAllNodes(),
@@ -31,7 +30,6 @@ async function handleRefreshAll() {
       availabilityCardRef.value?.refresh(),
       ipqaSectionRef.value?.refresh(),
       costCardRef.value?.refresh(),
-      minDelay,
     ])
   }
   finally {
