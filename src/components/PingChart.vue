@@ -10,7 +10,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useBackgroundSurface } from '@/composables/useBackgroundSurface'
 import { useAppStore } from '@/stores/app'
-import { cutPeakValues, insertObservationGaps } from '@/utils/recordHelper'
+import { createPingSeries, smoothPingChartRows } from '@/utils/pingChartSeries'
 import { getSharedRpc, RpcError } from '@/utils/rpc'
 import '@/utils/echarts' // 共享 ECharts 配置
 
@@ -119,6 +119,8 @@ interface TaskInfo {
   id: number
   name: string
   interval: number
+  metricInterval?: number
+  downsampled?: boolean
   loss: number
   p99?: number
   p50?: number
@@ -143,6 +145,8 @@ interface MetricSeries {
   tags?: Record<string, string>
   tag?: Record<string, string>
   points: MetricPoint[]
+  interval_seconds?: number
+  downsampled?: boolean
 }
 
 interface MetricQueryResponse {
@@ -309,6 +313,7 @@ async function fetchMetricRecords(uuid: string, hours: number): Promise<PingChar
   ])
 
   const records: PingRecord[] = []
+  const metricIntervals = new Map<number, { interval: number, downsampled: boolean }>()
   for (const series of metricResult?.series ?? []) {
     if (series.metric_key !== 'ping.latency_ms')
       continue
@@ -318,6 +323,8 @@ async function fetchMetricRecords(uuid: string, hours: number): Promise<PingChar
       if (taskId === null)
         continue
 
+      if (typeof series.interval_seconds === 'number' && Number.isFinite(series.interval_seconds) && series.interval_seconds > 0)
+        metricIntervals.set(taskId, { interval: series.interval_seconds, downsampled: series.downsampled === true })
       pushLatencyMetricPoint(records, uuid, taskId, point)
     }
   }
@@ -349,6 +356,8 @@ async function fetchMetricRecords(uuid: string, hours: number): Promise<PingChar
     id: Number(task.task_id),
     name: task.name || `Ping ${task.task_id}`,
     interval: task.interval ?? 60,
+    metricInterval: metricIntervals.get(Number(task.task_id))?.interval,
+    downsampled: metricIntervals.get(Number(task.task_id))?.downsampled,
     loss: task.loss,
     p99: task.p99,
     p50: task.p50,
@@ -493,11 +502,7 @@ const mergedData = computed(() => {
     }
   }
 
-  const intervalMs = Math.max(
-    Math.ceil(hours * 3600_000 / HISTORY_MAX_POINTS),
-    Math.min(...tasks.value.map(task => (task.interval && task.interval > 0 ? task.interval : 60) * 1000), 60_000),
-  )
-  return insertObservationGaps(merged.slice(startIdx), tasks.value.map(task => String(task.id)), intervalMs)
+  return merged.slice(startIdx)
 })
 
 const chartData = computed(() => {
@@ -508,7 +513,7 @@ const chartData = computed(() => {
     return []
 
   if (cutPeak.value) {
-    data = cutPeakValues(data, selectedKeys)
+    data = smoothPingChartRows(data, tasks.value.filter(task => selectedTaskIds.value.includes(task.id)).map(task => ({ ...task, interval: task.metricInterval ?? task.interval })), selectedHours.value)
   }
 
   // Preserve missing observations and failed probes as gaps; never invent latency.
@@ -518,7 +523,7 @@ const chartData = computed(() => {
 
 // ==================== 工具函数 ====================
 
-function formatTime(time: string, showDate: boolean): string {
+function formatTime(time: string | number, showDate: boolean): string {
   const date = dayjs(time)
   if (showDate) {
     return date.format('M/D HH:mm')
@@ -717,21 +722,9 @@ const pingChartOption = computed(() => {
   const hours = selectedHours.value
 
   // 1. 上通道：延迟折线 series（绑定 gridIndex: 0, yAxisIndex: 0）
-  const lineSeries = taskList.map((task) => {
-    const color = getTaskColor(task.id)
-    return {
-      name: task.name,
-      type: 'line' as const,
-      xAxisIndex: 0,
-      yAxisIndex: 0,
-      data: data.map(d => (showDelay.value ? (d[task.id] as number | null ?? null) : null)),
-      smooth: showDelay.value ? (cutPeak.value ? 0.6 : 0.1) : 0,
-      showSymbol: false,
-      connectNulls: false,
-      lineStyle: { width: showDelay.value ? 1.5 : 0, color, cap: 'round' as const },
-      itemStyle: { color, opacity: showDelay.value ? 1 : 0 },
-    }
-  })
+  const lineSeries = taskList.flatMap(task => createPingSeries(data, { ...task, interval: task.metricInterval ?? task.interval }, hours, getTaskColor(task.id), showDelay.value, cutPeak.value))
+  const chartTimes = data.map(row => dayjs(row.time as string).valueOf())
+  const timeToIndex = new Map(chartTimes.map((time, index) => [time, index]))
 
   // 预先统计各时间点存在丢包的任务，用于多任务同时丢包时的精准对称并排
   const lossTasksByTime = new Map<number, number[]>()
@@ -760,9 +753,10 @@ const pingChartOption = computed(() => {
             lossMap.set(m.index, Number((m.loss * 100).toFixed(1)))
           }
         }
-        const customLossData: [number, number][] = data.map((_, idx) => [
-          idx,
+        const customLossData: [number, number, number][] = data.map((_, idx) => [
+          chartTimes[idx]!,
           lossMap.get(idx) ?? 0,
+          idx,
         ])
 
         return {
@@ -775,13 +769,14 @@ const pingChartOption = computed(() => {
             value: (dim: number) => number
             coord: (pt: [number, number]) => [number, number]
           }) => {
-            const xIndex = api.value(0)
+            const xTime = api.value(0)
+            const xIndex = api.value(2)
             const lossVal = api.value(1)
             if (lossVal === null || lossVal === undefined || lossVal <= 0)
               return
 
-            const coordTop = api.coord([xIndex, lossVal])
-            const coordBottom = api.coord([xIndex, 0])
+            const coordTop = api.coord([xTime, lossVal])
+            const coordBottom = api.coord([xTime, 0])
 
             const activeTaskIds = lossTasksByTime.get(xIndex) || []
             const count = activeTaskIds.length
@@ -857,9 +852,10 @@ const pingChartOption = computed(() => {
     ? [
         // 上通道 X 轴（隐藏刻度文字与多余浮动时间气泡）
         {
-          type: 'category' as const,
+          type: 'time' as const,
           gridIndex: 0,
-          data: data.map(d => formatTime(d.time as string, showDateInAxis.value)),
+          min: chartTimes[0],
+          max: chartTimes.at(-1),
           axisLabel: { show: false },
           axisLine: {
             show: true,
@@ -873,13 +869,15 @@ const pingChartOption = computed(() => {
         },
         // 下通道 X 轴（显示时间刻度）
         {
-          type: 'category' as const,
+          type: 'time' as const,
           gridIndex: 1,
-          data: data.map(d => formatTime(d.time as string, showDateInAxis.value)),
+          min: chartTimes[0],
+          max: chartTimes.at(-1),
           axisLabel: {
             fontSize: 11,
             color: chartThemeColors.value.textSecondary,
             margin: 6,
+            formatter: (value: number) => formatTime(value, showDateInAxis.value),
           },
           axisLine: {
             show: true,
@@ -891,13 +889,15 @@ const pingChartOption = computed(() => {
       ]
     : [
         {
-          type: 'category' as const,
+          type: 'time' as const,
           gridIndex: 0,
-          data: data.map(d => formatTime(d.time as string, showDateInAxis.value)),
+          min: chartTimes[0],
+          max: chartTimes.at(-1),
           axisLabel: {
             fontSize: 11,
             color: chartThemeColors.value.textSecondary,
             margin: 12,
+            formatter: (value: number) => formatTime(value, showDateInAxis.value),
           },
           axisLine: {
             show: true,
@@ -1031,13 +1031,15 @@ const pingChartOption = computed(() => {
 
         // 优先从 line 系列获取当前指针对应的时间点数据索引；若指针在下通道 custom 系列上，从 value[0] 或 dataIndex 获取
         const lineParam = p.find(item => item.seriesType === 'line')
-        let dataIndex = lineParam ? lineParam.dataIndex : -1
+        let dataIndex = lineParam && Array.isArray(lineParam.value) && typeof lineParam.value[0] === 'number'
+          ? (timeToIndex.get(lineParam.value[0]) ?? -1)
+          : -1
         if (dataIndex < 0) {
           const firstParam = p[0]
           if (firstParam) {
             const val = firstParam.value
             if (Array.isArray(val) && typeof val[0] === 'number') {
-              dataIndex = val[0]
+              dataIndex = timeToIndex.get(val[0]) ?? -1
             }
             else if (typeof firstParam.dataIndex === 'number') {
               dataIndex = firstParam.dataIndex
@@ -1086,12 +1088,15 @@ const pingChartOption = computed(() => {
             const lossText = (loss !== undefined && loss > 0)
               ? `<span style="margin-left:6px;color:${color};font-size:11px;font-weight:600">(${(loss * 100).toFixed(loss < 0.01 ? 1 : 0)}% 丢包)</span>`
               : ''
-            html += `<div style="display:flex;align-items:center">${colorDot}<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${task.name}</span>${lossText}<span style="margin-left:auto;font-weight:600;margin-left:16px;font-variant-numeric:tabular-nums">${Math.round(delayVal)} ms</span></div>`
+            const aggregateLabel = task.downsampled && task.metricInterval ? (task.metricInterval >= 86400 ? '日均 ' : '均值 ') : ''
+            html += `<div style="display:flex;align-items:center">${colorDot}<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${task.name}</span>${lossText}<span style="margin-left:auto;font-weight:600;margin-left:16px;font-variant-numeric:tabular-nums">${aggregateLabel}${Math.round(delayVal)} ms</span></div>`
           }
           else if (loss !== undefined && loss > 0) {
             html += `<div style="display:flex;align-items:center">${colorDot}<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${task.name}</span><span style="margin-left:auto;font-weight:600;margin-left:16px;color:${color};font-variant-numeric:tabular-nums">${(loss * 100).toFixed(loss < 0.01 ? 1 : 0)}% 丢包</span></div>`
           }
         }
+        if (taskRows.every(row => row.delayVal === null && !(row.loss !== undefined && row.loss > 0)))
+          html += '<div>该时间没有有效观测</div>'
         html += '</div>'
         return html
       },

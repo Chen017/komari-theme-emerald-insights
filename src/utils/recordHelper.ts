@@ -12,7 +12,7 @@ export function insertObservationGaps(rows: Record<string, unknown>[], keys: str
     const previous = result.at(-1)
     const previousMs = previous ? Date.parse(String(previous.time)) : Number.NaN
     if (Number.isFinite(previousMs) && Date.parse(String(row.time)) - previousMs > intervalMs * 3)
-      result.push({ ...Object.fromEntries(keys.map(key => [key, null])), time: new Date(previousMs + intervalMs).toISOString() })
+      result.push({ ...Object.fromEntries(keys.map(key => [key, null])), time: new Date(previousMs + intervalMs).toISOString(), observationGap: true })
     result.push(row)
   }
   return result
@@ -307,6 +307,7 @@ export function cutPeakValues(
   alpha: number = 0.3,
   windowSize: number = 15,
   spikeThreshold: number = 0.3,
+  preserveGaps: boolean = false,
 ): AnyRecord[] {
   if (!data || data.length === 0)
     return data
@@ -315,7 +316,7 @@ export function cutPeakValues(
   const halfWindow = Math.floor(windowSize / 2)
 
   for (const key of keys) {
-    // 第一步：检测并移除突变值
+    // 第一步：检测突变值；保留缺口时将突变压到邻域均值，不制造新断点。
     for (let i = 0; i < result.length; i++) {
       const currentRow = result[i]
       if (!currentRow)
@@ -351,11 +352,11 @@ export function cutPeakValues(
           if (neighborMean > 0) {
             const relativeChange = Math.abs(currentValue - neighborMean) / neighborMean
             if (relativeChange > spikeThreshold) {
-              result[i] = { ...currentRow, [key]: null }
+              result[i] = { ...currentRow, [key]: preserveGaps ? neighborMean : null }
             }
           }
           else if (Math.abs(currentValue) > 10) {
-            result[i] = { ...currentRow, [key]: null }
+            result[i] = { ...currentRow, [key]: preserveGaps ? neighborMean : null }
           }
         }
       }
@@ -379,7 +380,10 @@ export function cutPeakValues(
         }
         result[i] = { ...row, [key]: ewma }
       }
-      else if (ewma !== null) {
+      else if (preserveGaps && currentValue === null) {
+        ewma = null
+      }
+      else if (!preserveGaps && ewma !== null) {
         result[i] = { ...row, [key]: ewma }
       }
     }
