@@ -48,7 +48,9 @@
       { "key": "ipqa_show_media_matrix", "name": "显示流媒体/AI矩阵", "type": "switch", "default": true, "help": "在资源概览的 IPQA 模块中展示流媒体与 AI 解锁能力矩阵" },
       { "key": "ipqa_show_changes", "name": "显示最近属性与风险变动", "type": "switch", "default": true, "help": "在资源概览的 IPQA 模块中展示最近属性与评级变动时间线" },
       { "name": "CPU Steal 设置", "type": "title" },
-      { "key": "enable_cpu_steal", "name": "在 CPU/负载图表显示 Steal 率", "type": "switch", "default": true, "help": "在节点详情的 CPU 与系统负载图表中叠加 Steal（每 2 分钟平均值）曲线。需要安装 CPU Steal Monitor 插件；如果尚未安装，请前往 Komari 后台「插件商店」搜索 CPU Steal Monitor 并安装。即使未安装插件也不会影响原有 CPU/负载曲线；关闭本开关将隐藏 Steal 曲线并停止相关 API 请求。" }
+      { "key": "enable_cpu_steal", "name": "启用 CPU Steal 图表功能", "type": "switch", "default": true, "help": "启用后在节点详情的 CPU/负载图中提供 Steal 图例与曲线；首次打开时是否绘制由下方「默认显示 Steal 曲线」控制，可随时点击图例显示或隐藏。需先安装 CPU Steal Monitor 插件；尚未安装可前往 Komari 后台「插件商店」搜索 CPU Steal Monitor 并安装。关闭本开关将移除 Steal 图例并停止相关 API 请求。" },
+      { "key": "cpu_steal_multiplier", "name": "Steal 曲线放大倍率", "type": "select", "default": "10", "options": "1,5,10,20,50", "help": "仅改变 Steal 曲线的显示高度，可选择 ×1、×5、×10、×20、×50；放大后最多显示到 100% 图表顶部，悬停仍显示真实 Steal 百分比。CPU 与系统负载不受影响。" },
+      { "key": "cpu_steal_default_visible", "name": "默认显示 Steal 曲线", "type": "switch", "default": false, "help": "默认关闭（隐藏）：进入节点图表时先不绘制 Steal，避免放大后的 Steal 曲线与 CPU 曲线重叠，但保留图例，点击 Steal ×倍率 即可显示或再次隐藏。开启后进入图表立即绘制 Steal；该设置不影响插件独立采集。" }
     ]
   }
 }
