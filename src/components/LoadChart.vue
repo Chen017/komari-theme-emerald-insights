@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { StealSample } from '@/features/cpu-steal/api'
 import type { RecordFormat } from '@/utils/recordHelper'
 import type { StatusRecord } from '@/utils/rpc'
 import { Icon } from '@iconify/vue'
@@ -11,8 +12,8 @@ import { Empty } from '@/components/ui/empty'
 import { Spinner } from '@/components/ui/spinner'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useBackgroundSurface } from '@/composables/useBackgroundSurface'
-import { fetchCpuStealHistory, type StealSample } from '@/features/cpu-steal/api'
 import { alignStealToTimeline } from '@/features/cpu-steal/alignment'
+import { fetchCpuStealHistory } from '@/features/cpu-steal/api'
 import { useAppStore } from '@/stores/app'
 import { useNodesStore } from '@/stores/nodes'
 import { formatBytes, formatBytesSplit } from '@/utils/helper'
@@ -174,7 +175,9 @@ watch([() => props.uuid, selectedView], () => {
   stealSamples.value = []
   void refreshSteal()
 }, { immediate: true })
-useIntervalFn(() => { void refreshSteal() }, 120000)
+useIntervalFn(() => {
+  void refreshSteal()
+}, 120000)
 const loading = ref(false)
 const isInitialLoad = ref(true) // 是否为首次加载（用于控制实时模式下的 NSpin 显示）
 const error = ref<string | null>(null)
