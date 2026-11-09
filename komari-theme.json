@@ -2,7 +2,7 @@
   "name": "Komari Emerald Insights · 翡翠洞察",
   "short": "emerald-insights",
   "description": "现代翡翠风格全功能监控主题：集成资源概览大盘、30天在线率、IP质量与流媒体/AI解锁一览（支持查看详细评分与能力）、流量重置趋势以及节点成本与续费分析。 / Modern emerald theme featuring Resource Insights, 30-day availability, IP quality & streaming unlock overview, traffic reset trends, and VPS cost/renewal analytics.",
-  "version": "2.0.6",
+  "version": "2.0.7",
   "author": "Chen017",
   "url": "https://github.com/Chen017/komari-theme-emerald-insights",
   "preview": "preview.png",
@@ -46,7 +46,9 @@
       { "key": "enable_node_detail_ipqa", "name": "节点详情展示 IP 快照", "type": "switch", "default": true, "help": "在节点详情页显示 IPQA 快照。未安装时自动优雅降级，【强烈建议前往插件商店安装 IPQA 告警报告插件及 VPS 端 IP-Quality-Archive】以获得完整节点 IP 质量快照与历史档案查阅能力。" },
       { "key": "ipqa_show_risk_matrix", "name": "显示风控评分矩阵", "type": "switch", "default": true, "help": "在资源概览的 IPQA 模块中展示各风控数据库对比矩阵" },
       { "key": "ipqa_show_media_matrix", "name": "显示流媒体/AI矩阵", "type": "switch", "default": true, "help": "在资源概览的 IPQA 模块中展示流媒体与 AI 解锁能力矩阵" },
-      { "key": "ipqa_show_changes", "name": "显示最近属性与风险变动", "type": "switch", "default": true, "help": "在资源概览的 IPQA 模块中展示最近属性与评级变动时间线" }
+      { "key": "ipqa_show_changes", "name": "显示最近属性与风险变动", "type": "switch", "default": true, "help": "在资源概览的 IPQA 模块中展示最近属性与评级变动时间线" },
+      { "name": "CPU Steal 设置", "type": "title" },
+      { "key": "enable_cpu_steal", "name": "在 CPU/负载图表显示 Steal 率", "type": "switch", "default": true, "help": "在节点详情的 CPU 与系统负载图表中叠加 Steal（每 2 分钟平均值）曲线。需要安装 CPU Steal Monitor 插件；如果尚未安装，请前往 Komari 后台「插件商店」搜索 CPU Steal Monitor 并安装。即使未安装插件也不会影响原有 CPU/负载曲线；关闭本开关将隐藏 Steal 曲线并停止相关 API 请求。" }
     ]
   }
 }

@@ -160,6 +160,8 @@ const stealSamples = shallowRef<StealSample[]>([])
 let stealRequestGeneration = 0
 async function refreshSteal() {
   const generation = ++stealRequestGeneration
+  if (!appStore.enableCpuSteal)
+    return
   const uuid = props.uuid
   const view = selectedView.value
   if (!uuid)
@@ -171,12 +173,16 @@ async function refreshSteal() {
   if (generation === stealRequestGeneration && uuid === props.uuid && view === selectedView.value)
     stealSamples.value = samples
 }
-watch([() => props.uuid, selectedView], () => {
+watch([() => props.uuid, selectedView, () => appStore.enableCpuSteal], () => {
+  // Invalidate any in-flight HTTP request when switching nodes, view or preference.
+  ++stealRequestGeneration
   stealSamples.value = []
-  void refreshSteal()
+  if (appStore.enableCpuSteal)
+    void refreshSteal()
 }, { immediate: true })
 useIntervalFn(() => {
-  void refreshSteal()
+  if (appStore.enableCpuSteal)
+    void refreshSteal()
 }, 120000)
 const loading = ref(false)
 const isInitialLoad = ref(true) // 是否为首次加载（用于控制实时模式下的 NSpin 显示）
@@ -341,6 +347,8 @@ const chartData = computed(() => {
 })
 
 const stealChartValues = computed(() => {
+  if (!appStore.enableCpuSteal)
+    return []
   const hours = selectedHours.value || 4
   const bucketMs = isRealtime.value ? 0 : (hours <= 4 ? 60000 : hours > 120 ? 3600000 : 900000)
   return alignStealToTimeline(chartData.value.map(r => r.time), stealSamples.value, bucketMs)
@@ -419,7 +427,9 @@ const baseYAxisConfig = computed(() => ({
 const cpuChartOption = computed(() => ({
   animation: false,
   // 全局颜色配置（确保 Tooltip 圆点颜色与线条一致）
-  color: [chartColors.primary, chartColors.secondary, chartColors.tertiary],
+  color: appStore.enableCpuSteal
+    ? [chartColors.primary, chartColors.secondary, chartColors.tertiary]
+    : [chartColors.primary, chartColors.secondary],
   tooltip: {
     ...baseTooltipConfig.value,
     formatter: (params: unknown) => {
@@ -454,7 +464,7 @@ const cpuChartOption = computed(() => ({
     },
   },
   legend: {
-    data: ['CPU', '负载', 'Steal'],
+    data: appStore.enableCpuSteal ? ['CPU', '负载', 'Steal'] : ['CPU', '负载'],
     bottom: 4,
     itemWidth: 12,
     itemHeight: 12,
@@ -512,7 +522,7 @@ const cpuChartOption = computed(() => ({
       yAxisIndex: 1,
       lineStyle: { width: 1.5, color: chartColors.secondary, cap: 'round' as const },
     },
-    {
+    ...(appStore.enableCpuSteal ? [{
       name: 'Steal',
       type: 'line',
       data: stealChartValues.value,
@@ -520,7 +530,7 @@ const cpuChartOption = computed(() => ({
       connectNulls: false,
       yAxisIndex: 0,
       lineStyle: { width: 1.5, color: chartColors.tertiary, cap: 'round' as const },
-    },
+    }] : []),
   ],
 }))
 

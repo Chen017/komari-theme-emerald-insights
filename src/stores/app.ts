@@ -352,6 +352,11 @@ const useAppStore = defineStore('app', () => {
     return val !== undefined ? Boolean(val) : true
   })
 
+  const enableCpuSteal = computed<boolean>(() => {
+    const val = publicSettings.value?.theme_settings?.enable_cpu_steal
+    return typeof val === 'boolean' ? val : true
+  })
+
   const enableNodeDetailIpqa = computed<boolean>(() => {
     const val = publicSettings.value?.theme_settings?.enable_node_detail_ipqa
     return val !== undefined ? Boolean(val) : true
@@ -407,6 +412,7 @@ const useAppStore = defineStore('app', () => {
     backgroundBlur,
     backgroundOverlay,
     enableResourceInsights,
+    enableCpuSteal,
     enableCostRenewal,
     enableIpqaOverview,
     enableNodeDetailIpqa,
