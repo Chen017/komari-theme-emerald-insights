@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+// eslint-disable-next-line test/no-import-node-test -- Tests use Node's built-in runner, not Vitest.
 import { test } from 'node:test'
 import { DEFAULT_STEAL_MULTIPLIER, formatRealSteal, scaleStealForChart, STEAL_MULTIPLIERS } from '../../src/features/cpu-steal/display'
 
