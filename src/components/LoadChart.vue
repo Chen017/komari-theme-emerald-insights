@@ -482,9 +482,11 @@ const cpuChartOption = computed(() => ({
   legend: {
     data: appStore.enableCpuSteal ? ['CPU', '负载', 'Steal'] : ['CPU', '负载'],
     selected: cpuLegendSelected.value,
-    formatter: (name: string) => name === 'Steal'
-      ? `Steal ×${appStore.cpuStealMultiplier}`
-      : name,
+    formatter: (name: string) => {
+      if (name === 'Steal')
+        return `Steal ×${appStore.cpuStealMultiplier}`
+      return name
+    },
     bottom: 4,
     itemWidth: 12,
     itemHeight: 12,
