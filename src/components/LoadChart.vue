@@ -356,7 +356,17 @@ const stealChartValues = computed(() => {
 })
 
 // The display amplification never changes collected Steal measurements.
-const stealDisplayValues = computed(() => stealChartValues.value.map(scaleStealForChart))
+const stealDisplayValues = computed(() => stealChartValues.value.map(value => scaleStealForChart(value, appStore.cpuStealMultiplier)))
+
+// Preserve manual legend selection across polling and history view changes.
+const cpuLegendSelected = ref<Record<string, boolean>>({ CPU: true, 负载: true, Steal: appStore.cpuStealDefaultVisible })
+watch([() => props.uuid, () => appStore.cpuStealDefaultVisible], () => {
+  cpuLegendSelected.value = { ...cpuLegendSelected.value, Steal: appStore.cpuStealDefaultVisible }
+})
+function onCpuLegendSelectChanged(event: { selected?: Record<string, boolean> }) {
+  if (event.selected)
+    cpuLegendSelected.value = { ...event.selected }
+}
 
 const latestStatus = computed(() => {
   const data = remoteData.value
@@ -456,7 +466,7 @@ const cpuChartOption = computed(() => ({
         if (item.seriesName === 'CPU') {
           html += `<div style="display:flex;align-items:center">${colorDot}<span>CPU</span><span style="margin-left:auto;font-weight:600;margin-left:16px">${item.value?.toFixed(1) ?? '-'}%</span></div>`
         }
-        else if (item.seriesName === 'Steal ×10') {
+        else if (item.seriesName === 'Steal') {
           // item.value is the amplified plot value, not the raw measurement.
           const realValue = stealChartValues.value[item.dataIndex]
           html += `<div style="display:flex;align-items:center">${colorDot}<span>Steal（真实值，2 分钟均值）</span><span style="margin-left:auto;font-weight:600;margin-left:16px">${formatRealSteal(realValue)}</span></div>`
@@ -470,7 +480,9 @@ const cpuChartOption = computed(() => ({
     },
   },
   legend: {
-    data: appStore.enableCpuSteal ? ['CPU', '负载', 'Steal ×10'] : ['CPU', '负载'],
+    data: appStore.enableCpuSteal ? ['CPU', '负载', 'Steal'] : ['CPU', '负载'],
+    selected: cpuLegendSelected.value,
+    formatter: (name: string) => name === 'Steal' ? `Steal ×${appStore.cpuStealMultiplier}` : name,
     bottom: 4,
     itemWidth: 12,
     itemHeight: 12,
@@ -529,7 +541,7 @@ const cpuChartOption = computed(() => ({
       lineStyle: { width: 1.5, color: chartColors.secondary, cap: 'round' as const },
     },
     ...(appStore.enableCpuSteal ? [{
-      name: 'Steal ×10',
+      name: 'Steal',
       type: 'line',
       data: stealDisplayValues.value,
       showSymbol: false,
@@ -976,7 +988,7 @@ onMounted(() => {
             </div>
           </template>
           <div class="h-48">
-            <VChart :option="cpuChartOption" autoresize />
+            <VChart :option="cpuChartOption" autoresize @legendselectchanged="onCpuLegendSelectChanged" />
           </div>
         </CardX>
 
