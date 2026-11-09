@@ -1,8 +1,8 @@
 <h3 align="center"> Komari Emerald Insights </h3>
 <p align="center">
-现代化 Komari 主题，集成流量趋势、精确在线率、IPQA 可视化、成本与续费分析。
+现代化 Komari 主题，集成流量趋势、精确在线率、CPU Steal 监控、IPQA 可视化、成本与续费分析。
 <br>
-Modern Komari theme with Resource Insights, traffic trends, exact availability, IPQA visualization, cost and renewal analytics.
+Modern Komari theme with CPU Steal visualization, Resource Insights, traffic trends, exact availability, IPQA visualization, cost and renewal analytics.
 </p>
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License"></a>
@@ -15,6 +15,7 @@ Modern Komari theme with Resource Insights, traffic trends, exact availability, 
 ## 功能特性
 
 - **经典监控视图**：保持 Tokinx 原版 Emerald 纯正设计语言，轻量精致的节点卡片与详情弹窗。
+- **CPU Steal 曲线（可选）**：配合 [CPU Steal Monitor](https://github.com/Chen017/komari-plugin-cpu-steal-monitor) 插件，在既有 CPU/系统负载图表叠加两分钟 Steal% 曲线，共享实时及历史时间轴；未安装插件时原生曲线正常显示。
 - **资源概览 (Resource Insights)**：
   - **每日流量趋势**：支持全部节点汇总与单节点切换，提供 7 天、30 天以及本周期（Billing Cycle）统计，准确处理计数器重置与重启。
   - **近 30 天在线率**：基于 Availability History 插件的 WebSocket 事件账本统计在线率，不会使用 CPU 采样历史推测短时离线。真实反映采样覆盖率（如 `30 / 30 天` 或 `覆盖 13.4 / 30 天`），不掩盖历史缺失。
@@ -40,6 +41,7 @@ Modern Komari theme with Resource Insights, traffic trends, exact availability, 
 | **标准监控与节点详情** | Komari (`>= 1.4.3`) | **必需** | 经典监控视图与基础指标呈现 |
 | **7 天 / 30 天 / 本周期 流量趋势** | Komari Metric Store | 内置支持 | 历史流量汇聚统计 |
 | **近 30 天在线率** | [komari-plugin-availability-history](https://github.com/Chen017/komari-plugin-availability-history) | 可选 | WebSocket 实时连接事件账本 |
+| **CPU Steal 两分钟监控** | [komari-plugin-cpu-steal-monitor](https://github.com/Chen017/komari-plugin-cpu-steal-monitor) | 可选 | 独立历史/汇总 API，CPU/负载图表叠加 Steal% |
 | **IPQA 质量概览与历史档案** | [komari-plugin-ipqa-alert-report](https://github.com/Chen017/komari-plugin-ipqa-alert-report) | 可选 | 归档同步、只读 API 与语义变更 |
 | **IPQA 原始数据采集** | [IP-Quality-Archive](https://github.com/Chen017/IP-Quality-Archive) | IPQA 必需 | 运行于受监控 VPS 节点 |
 | **成本与续费分析** | 无 | 内置支持 | 支持多币种汇率折算与预算分析 |
@@ -119,6 +121,17 @@ Resource Insights 汇集了集群与节点的关键资源指标，其数据来�
 
 - **依赖插件**：[komari-plugin-availability-history](https://github.com/Chen017/komari-plugin-availability-history)。
 - **实时事件账本**：插件基于服务端与 Agent 之间的 WebSocket 实时断连事件记录精准账本，而非通过 CPU 采样历史猜测短时离线。
+
+---
+
+### 3.1 CPU Steal（CPU 被宿主机抢占）
+
+- **独立插件**：[CPU Steal Monitor](https://github.com/Chen017/komari-plugin-cpu-steal-monitor) 每两分钟通过 Linux Agent 的固定只读命令采集 `/proc/stat`，提供 `/v1/history`、`/v1/summary`、管理员 `/v1/health`。插件不依赖本主题。
+- **主题联动**：节点详情的 CPU/负载图中增加 Steal（2 分钟均值）曲线。沿用原有时间轴和采样桶，缺失/离线/重启不会伪造 0%。
+- **权限要求**：Agent 必须允许 Komari 远程命令执行；禁用远程控制的节点无法采集 Steal。插件单独安装后也可直接通过 REST 查询数据。
+- **优雅降级**：没有插件、无访问权限或 API 返回错误时，Steal 显示缺失，不影响 CPU/负载原有数据和交互。
+
+完整的安装与图表时间轴说明见 [CPU Steal 联动文档](docs/CPU-STEAL.md)。
 
 ---
 
@@ -276,6 +289,12 @@ Oracle-ARM;白嫖中;<TRD:1>
 - [IP-Quality-Archive (Chen017)](https://github.com/Chen017/IP-Quality-Archive)：IP 质量数据格式标准。
 
 ---
+
+
+## CPU Steal 常见问题
+
+#### Q: 安装主题后为什么显示 Steal -%？
+> A: Steal 由**独立插件**采集，主题不会直接读取 VPS。先确认安装并启用 [CPU Steal Monitor](https://github.com/Chen017/komari-plugin-cpu-steal-monitor) v0.2.0 或兼容版本，并允许 Agent 执行远程只读命令。管理员先访问插件的 `/v1/health` 检查节点采集状态，再检查 `/v1/history?uuid=...` 是否有样本。首次采样仅建立基线，两分钟后成功采样才有值。真实 Steal 为 0% 会显示 0%；持续无样本不会伪装成 0%。
 
 ## License
 
