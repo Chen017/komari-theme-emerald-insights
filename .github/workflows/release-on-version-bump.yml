@@ -14,25 +14,17 @@ concurrency:
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
-      - name: Set up Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: '24'
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
 
       - name: Detect version bump
         id: version
@@ -89,6 +81,28 @@ jobs:
         run: |
           echo "package.json version has not changed. Skipping release."
 
+      # GitHub's Bun release download returned HTTP 504 while resolving
+      # bun-version: latest. Install the exact packageManager version from
+      # npm instead, with bounded retries and no dependency on GitHub assets.
+      - name: Install Bun 1.3.14 (npm registry, retry on transient failure)
+        if: steps.version.outputs.version_changed == 'true'
+        shell: bash
+        run: |
+          for attempt in 1 2 3; do
+            if npm install --global bun@1.3.14 --no-audit --no-fund; then
+              test "$(bun --version)" = "1.3.14"
+              exit 0
+            fi
+            echo "Bun install attempt ${attempt}/3 failed." >&2
+            if [ "${attempt}" -lt 3 ]; then sleep $((attempt * 10)); fi
+          done
+          echo "Could not install pinned Bun version." >&2
+          exit 1
+
+      - name: Install dependencies
+        if: steps.version.outputs.version_changed == 'true'
+        run: bun install --frozen-lockfile
+
       - name: Build project
         if: steps.version.outputs.version_changed == 'true'
         run: bun run build
@@ -125,7 +139,7 @@ jobs:
 
       - name: Create or update GitHub release
         if: steps.version.outputs.version_changed == 'true'
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3
         with:
           tag_name: ${{ steps.version.outputs.release_tag }}
           name: ${{ steps.version.outputs.release_tag }}
