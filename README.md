@@ -15,7 +15,7 @@ Modern Komari theme with CPU Steal visualization, Resource Insights, traffic tre
 ## 功能特性
 
 - **经典监控视图**：保持 Tokinx 原版 Emerald 纯正设计语言，轻量精致的节点卡片与详情弹窗。
-- **CPU Steal 曲线（可选）**：主题后台的「CPU Steal 设置」中可控制是否显示 Steal 曲线（默认开启），并提示可在 Komari「插件商店」安装 CPU Steal Monitor。配合插件在既有 CPU/系统负载图叠加两分钟 Steal% 曲线；仅将绘图高度放大 **×10**，真实 Steal 达到 **10%** 即触及图顶，超过 10% 封顶，而 Tooltip 始终显示真实百分比。图例标记 `Steal ×10`，关闭开关时隐藏 Steal 且不请求插件 API，原有 CPU/负载不受影响。
+- **CPU Steal 曲线（可选）**：主题后台的「CPU Steal 设置」中可控制是否显示 Steal 曲线（默认开启），并提示可在 Komari「插件商店」安装 CPU Steal Monitor。配合插件在既有 CPU/系统负载图叠加两分钟 Steal% 曲线；可在主题设置中选择 **×1、×5、×10（默认）、×20、×50** 绘制倍率，按 `min(真实 Steal% × 倍率, 100)` 封顶，Tooltip 仍显示真实值。**默认隐藏 Steal 曲线，但保留图例**，可点击 `Steal ×倍率` 随时显示或隐藏，手动状态不会被采样刷新重置。关闭功能开关才会移除图例并停止请求；CPU/负载不受影响。
 - **资源概览 (Resource Insights)**：
   - **每日流量趋势**：支持全部节点汇总与单节点切换，提供 7 天、30 天以及本周期（Billing Cycle）统计，准确处理计数器重置与重启。
   - **近 30 天在线率**：基于 Availability History 插件的 WebSocket 事件账本统计在线率，不会使用 CPU 采样历史推测短时离线。真实反映采样覆盖率（如 `30 / 30 天` 或 `覆盖 13.4 / 30 天`），不掩盖历史缺失。
@@ -127,7 +127,7 @@ Resource Insights 汇集了集群与节点的关键资源指标，其数据来�
 ### 3.1 CPU Steal（CPU 被宿主机抢占）
 
 - **独立插件**：[CPU Steal Monitor](https://github.com/Chen017/komari-plugin-cpu-steal-monitor) 每两分钟通过 Linux Agent 的固定只读命令采集 `/proc/stat`，提供 `/v1/history`、`/v1/summary`、管理员 `/v1/health`。插件不依赖本主题。
-- **主题联动**：主题设置的「CPU Steal 设置」提供独立开关（默认开启），并以文字提示可去「插件商店」安装 CPU Steal Monitor，不作插件安装状态检测。开启时在节点详情 CPU/负载图叠加 `Steal ×10`（绘图值 `min(真实 Steal% × 10, 100)`；Tooltip 显示真实值），关闭时不显示、不发出 Steal API 请求。沿用原有时间轴和采样桶，缺失/离线/重启不会伪造 0%。
+- **主题联动**：主题设置的「CPU Steal 设置」提供独立开关（默认开启），并以文字提示可去「插件商店」安装 CPU Steal Monitor，不作插件安装状态检测。启用 Steal 功能后默认隐藏曲线但保留可点击图例；另可选 `×1/×5/×10/×20/×50` 倍率（默认 ×10），图例对应显示 `Steal ×倍率`。绘图数据按 `min(真实 Steal% × 倍率, 100)` 封顶，Tooltip 显示真实值。关闭功能开关才会移除图例并停止请求。沿用原有时间轴和采样桶，缺失/离线/重启不会伪造 0%。
 - **权限要求**：Agent 必须允许 Komari 远程命令执行；禁用远程控制的节点无法采集 Steal。插件单独安装后也可直接通过 REST 查询数据。
 - **优雅降级**：没有插件、无访问权限或 API 返回错误时，Steal 显示缺失，不影响 CPU/负载原有数据和交互。
 
