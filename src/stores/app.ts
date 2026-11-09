@@ -357,6 +357,16 @@ const useAppStore = defineStore('app', () => {
     return typeof val === 'boolean' ? val : true
   })
 
+  const cpuStealMultiplier = computed<number>(() => {
+    const value = Number(publicSettings.value?.theme_settings?.cpu_steal_multiplier ?? 10)
+    return [1, 5, 10, 20, 50].includes(value) ? value : 10
+  })
+
+  const cpuStealDefaultVisible = computed<boolean>(() => {
+    const value = publicSettings.value?.theme_settings?.cpu_steal_default_visible
+    return typeof value === 'boolean' ? value : false
+  })
+
   const enableNodeDetailIpqa = computed<boolean>(() => {
     const val = publicSettings.value?.theme_settings?.enable_node_detail_ipqa
     return val !== undefined ? Boolean(val) : true
@@ -413,6 +423,8 @@ const useAppStore = defineStore('app', () => {
     backgroundOverlay,
     enableResourceInsights,
     enableCpuSteal,
+    cpuStealMultiplier,
+    cpuStealDefaultVisible,
     enableCostRenewal,
     enableIpqaOverview,
     enableNodeDetailIpqa,
