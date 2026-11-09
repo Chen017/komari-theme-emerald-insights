@@ -11,6 +11,8 @@ import { Empty } from '@/components/ui/empty'
 import { Spinner } from '@/components/ui/spinner'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useBackgroundSurface } from '@/composables/useBackgroundSurface'
+import { fetchCpuStealHistory, type StealSample } from '@/features/cpu-steal/api'
+import { alignStealToTimeline } from '@/features/cpu-steal/alignment'
 import { useAppStore } from '@/stores/app'
 import { useNodesStore } from '@/stores/nodes'
 import { formatBytes, formatBytesSplit } from '@/utils/helper'
@@ -153,6 +155,26 @@ const isRealtime = computed(() => selectedView.value === '实时')
 
 // 数据状态
 const remoteData = shallowRef<StatusRecord[]>([])
+const stealSamples = shallowRef<StealSample[]>([])
+let stealRequestGeneration = 0
+async function refreshSteal() {
+  const generation = ++stealRequestGeneration
+  const uuid = props.uuid
+  const view = selectedView.value
+  if (!uuid)
+    return
+  const hours = selectedHours.value || 0.5
+  const to = Date.now()
+  const from = to - Math.min(90 * 24, Math.max(1, hours)) * 3600000 - 600000
+  const samples = await fetchCpuStealHistory(uuid, from, to)
+  if (generation === stealRequestGeneration && uuid === props.uuid && view === selectedView.value)
+    stealSamples.value = samples
+}
+watch([() => props.uuid, selectedView], () => {
+  stealSamples.value = []
+  void refreshSteal()
+}, { immediate: true })
+useIntervalFn(() => { void refreshSteal() }, 120000)
 const loading = ref(false)
 const isInitialLoad = ref(true) // 是否为首次加载（用于控制实时模式下的 NSpin 显示）
 const error = ref<string | null>(null)
@@ -315,6 +337,12 @@ const chartData = computed(() => {
   return fillMissingTimePoints(data, intervalSec, hours * 3600, maxGap)
 })
 
+const stealChartValues = computed(() => {
+  const hours = selectedHours.value || 4
+  const bucketMs = isRealtime.value ? 0 : (hours <= 4 ? 60000 : hours > 120 ? 3600000 : 900000)
+  return alignStealToTimeline(chartData.value.map(r => r.time), stealSamples.value, bucketMs)
+})
+
 const latestStatus = computed(() => {
   const data = remoteData.value
   if (!data.length)
@@ -388,7 +416,7 @@ const baseYAxisConfig = computed(() => ({
 const cpuChartOption = computed(() => ({
   animation: false,
   // 全局颜色配置（确保 Tooltip 圆点颜色与线条一致）
-  color: [chartColors.primary, chartColors.secondary],
+  color: [chartColors.primary, chartColors.secondary, chartColors.tertiary],
   tooltip: {
     ...baseTooltipConfig.value,
     formatter: (params: unknown) => {
@@ -411,6 +439,9 @@ const cpuChartOption = computed(() => ({
         if (item.seriesName === 'CPU') {
           html += `<div style="display:flex;align-items:center">${colorDot}<span>CPU</span><span style="margin-left:auto;font-weight:600;margin-left:16px">${item.value?.toFixed(1) ?? '-'}%</span></div>`
         }
+        else if (item.seriesName === 'Steal') {
+          html += `<div style="display:flex;align-items:center">${colorDot}<span>Steal（2 分钟均值）</span><span style="margin-left:auto;font-weight:600;margin-left:16px">${item.value?.toFixed(2) ?? '-'}%</span></div>`
+        }
         else if (item.seriesName === '负载') {
           html += `<div style="display:flex;align-items:center">${colorDot}<span>系统负载</span><span style="margin-left:auto;font-weight:600;margin-left:16px">${item.value?.toFixed(2) ?? '-'}</span></div>`
         }
@@ -419,7 +450,15 @@ const cpuChartOption = computed(() => ({
       return html
     },
   },
-  grid: chartMargin,
+  legend: {
+    data: ['CPU', '负载', 'Steal'],
+    bottom: 4,
+    itemWidth: 12,
+    itemHeight: 12,
+    itemGap: 14,
+    textStyle: { fontSize: 11, color: chartThemeColors.value.textSecondary },
+  },
+  grid: chartMarginWithLegend,
   xAxis: baseXAxisConfig.value,
   yAxis: [
     {
@@ -469,6 +508,15 @@ const cpuChartOption = computed(() => ({
       showSymbol: false,
       yAxisIndex: 1,
       lineStyle: { width: 1.5, color: chartColors.secondary, cap: 'round' as const },
+    },
+    {
+      name: 'Steal',
+      type: 'line',
+      data: stealChartValues.value,
+      showSymbol: false,
+      connectNulls: false,
+      yAxisIndex: 0,
+      lineStyle: { width: 1.5, color: chartColors.tertiary, cap: 'round' as const },
     },
   ],
 }))
