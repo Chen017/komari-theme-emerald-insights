@@ -13,6 +13,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useBackgroundSurface } from '@/composables/useBackgroundSurface'
 import { alignStealToTimeline } from '@/features/cpu-steal/alignment'
+import { formatRealSteal, scaleStealForChart } from '@/features/cpu-steal/display'
 import { fetchCpuStealHistory } from '@/features/cpu-steal/api'
 import { useAppStore } from '@/stores/app'
 import { useNodesStore } from '@/stores/nodes'
@@ -354,6 +355,9 @@ const stealChartValues = computed(() => {
   return alignStealToTimeline(chartData.value.map(r => r.time), stealSamples.value, bucketMs)
 })
 
+// The display amplification never changes collected Steal measurements.
+const stealDisplayValues = computed(() => stealChartValues.value.map(scaleStealForChart))
+
 const latestStatus = computed(() => {
   const data = remoteData.value
   if (!data.length)
@@ -452,8 +456,10 @@ const cpuChartOption = computed(() => ({
         if (item.seriesName === 'CPU') {
           html += `<div style="display:flex;align-items:center">${colorDot}<span>CPU</span><span style="margin-left:auto;font-weight:600;margin-left:16px">${item.value?.toFixed(1) ?? '-'}%</span></div>`
         }
-        else if (item.seriesName === 'Steal') {
-          html += `<div style="display:flex;align-items:center">${colorDot}<span>Steal（2 分钟均值）</span><span style="margin-left:auto;font-weight:600;margin-left:16px">${item.value?.toFixed(2) ?? '-'}%</span></div>`
+        else if (item.seriesName === 'Steal ×10') {
+          // item.value is the amplified plot value, not the raw measurement.
+          const realValue = stealChartValues.value[item.dataIndex]
+          html += `<div style="display:flex;align-items:center">${colorDot}<span>Steal（真实值，2 分钟均值）</span><span style="margin-left:auto;font-weight:600;margin-left:16px">${formatRealSteal(realValue)}</span></div>`
         }
         else if (item.seriesName === '负载') {
           html += `<div style="display:flex;align-items:center">${colorDot}<span>系统负载</span><span style="margin-left:auto;font-weight:600;margin-left:16px">${item.value?.toFixed(2) ?? '-'}</span></div>`
@@ -464,7 +470,7 @@ const cpuChartOption = computed(() => ({
     },
   },
   legend: {
-    data: appStore.enableCpuSteal ? ['CPU', '负载', 'Steal'] : ['CPU', '负载'],
+    data: appStore.enableCpuSteal ? ['CPU', '负载', 'Steal ×10'] : ['CPU', '负载'],
     bottom: 4,
     itemWidth: 12,
     itemHeight: 12,
@@ -523,9 +529,9 @@ const cpuChartOption = computed(() => ({
       lineStyle: { width: 1.5, color: chartColors.secondary, cap: 'round' as const },
     },
     ...(appStore.enableCpuSteal ? [{
-      name: 'Steal',
+      name: 'Steal ×10',
       type: 'line',
-      data: stealChartValues.value,
+      data: stealDisplayValues.value,
       showSymbol: false,
       connectNulls: false,
       yAxisIndex: 0,
