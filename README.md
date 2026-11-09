@@ -253,27 +253,26 @@ Oracle-ARM;白嫖中;<TRD:1>
 本主题是 **Komari Emerald Ecosystem** 的前端核心：
 
 ```text
-                         Komari
-                            │
-               ┌────────────┴────────────┐
-               │                         │
-               ▼                         ▼
-   Availability History          IPQA Alert Report
-   WebSocket event ledger        Archive / API / Alerts
-                                         │
-                                         ▼
-                               IP-Quality-Archive
-                               on monitored VPS
-               │                         │
-               └────────────┬────────────┘
-                            ▼
-                Komari Emerald Insights
-                    Resource Insights
-                       (★ 本项目)
+                           Komari
+                             │
+             ┌───────────────┼────────────────┐
+             │               │                │
+             ▼               ▼                ▼
+ Availability History  CPU Steal Monitor  IPQA Alert Report
+ WebSocket events      /proc/stat + API   Archive / Alerts
+             │               │                ▲
+             │               │                │
+             │               │          IP-Quality-Archive
+             │               │          on monitored VPS
+             └───────────────┼────────────────┘
+                             ▼
+                   Komari Emerald Insights
+                    (★ 本项目：前端主题)
 ```
 
 - [Komari Emerald Suite](https://github.com/Chen017/komari-emerald-suite)：生态聚合展示主页
 - [Komari Plugin: Availability History](https://github.com/Chen017/komari-plugin-availability-history)：基于事件账本的在线率历史与 30 天可用性插件
+- [Komari Plugin: CPU Steal Monitor](https://github.com/Chen017/komari-plugin-cpu-steal-monitor)：独立采集两分钟 CPU Steal 并提供历史/汇总 API，可选与本主题 CPU/负载图表联动
 - [Komari Plugin: IPQA Alert Report](https://github.com/Chen017/komari-plugin-ipqa-alert-report)：IP 质量归档同步与告警报告插件
 - [IP-Quality-Archive](https://github.com/Chen017/IP-Quality-Archive)：节点端 IP 质量采集工具
 
