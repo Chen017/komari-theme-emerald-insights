@@ -437,6 +437,21 @@ const baseYAxisConfig = computed(() => ({
 
 // ==================== 图表配置 ====================
 
+// Optional Steal series is built separately to avoid disturbing CPU and Load.
+const optionalStealSeries = computed(() => {
+  if (!appStore.enableCpuSteal)
+    return []
+  return [{
+    name: 'Steal',
+    type: 'line',
+    data: stealDisplayValues.value,
+    showSymbol: false,
+    connectNulls: false,
+    yAxisIndex: 0,
+    lineStyle: { width: 1.5, color: chartColors.tertiary, cap: 'round' as const },
+  }]
+})
+
 // CPU 图表
 const cpuChartOption = computed(() => ({
   animation: false,
@@ -544,15 +559,7 @@ const cpuChartOption = computed(() => ({
       yAxisIndex: 1,
       lineStyle: { width: 1.5, color: chartColors.secondary, cap: 'round' as const },
     },
-    ...(appStore.enableCpuSteal ? [{
-      name: 'Steal',
-      type: 'line',
-      data: stealDisplayValues.value,
-      showSymbol: false,
-      connectNulls: false,
-      yAxisIndex: 0,
-      lineStyle: { width: 1.5, color: chartColors.tertiary, cap: 'round' as const },
-    }] : []),
+    ...optionalStealSeries.value,
   ],
 }))
 
