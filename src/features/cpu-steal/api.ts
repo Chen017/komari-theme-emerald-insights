@@ -11,7 +11,7 @@ export async function fetchCpuStealHistory(
 ): Promise<StealSample[]> {
   const params = new URLSearchParams({ uuid, from: String(Math.floor(from)), to: String(Math.ceil(to)) })
   try {
-    const response = await fetch('/api/plugin/cpu-steal-monitor/v1/history?' + params.toString(), {
+    const response = await fetch(`/api/plugin/cpu-steal-monitor/v1/history?${params.toString()}`, {
       headers: { Accept: 'application/json' },
       cache: 'no-store',
     })
