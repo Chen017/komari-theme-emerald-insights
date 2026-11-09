@@ -13,8 +13,8 @@ import { Spinner } from '@/components/ui/spinner'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useBackgroundSurface } from '@/composables/useBackgroundSurface'
 import { alignStealToTimeline } from '@/features/cpu-steal/alignment'
-import { formatRealSteal, scaleStealForChart } from '@/features/cpu-steal/display'
 import { fetchCpuStealHistory } from '@/features/cpu-steal/api'
+import { formatRealSteal, scaleStealForChart } from '@/features/cpu-steal/display'
 import { useAppStore } from '@/stores/app'
 import { useNodesStore } from '@/stores/nodes'
 import { formatBytes, formatBytesSplit } from '@/utils/helper'
@@ -482,7 +482,9 @@ const cpuChartOption = computed(() => ({
   legend: {
     data: appStore.enableCpuSteal ? ['CPU', '负载', 'Steal'] : ['CPU', '负载'],
     selected: cpuLegendSelected.value,
-    formatter: (name: string) => name === 'Steal' ? `Steal ×${appStore.cpuStealMultiplier}` : name,
+    formatter: (name: string) => name === 'Steal'
+      ? `Steal ×${appStore.cpuStealMultiplier}`
+      : name,
     bottom: 4,
     itemWidth: 12,
     itemHeight: 12,
