@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+// eslint-disable-next-line test/no-import-node-test -- Tests use Node's built-in runner, not Vitest.
 import { test } from 'node:test'
 
 const manifest = JSON.parse(readFileSync(new URL('../../komari-theme.json', import.meta.url), 'utf8'))
