@@ -1,8 +1,6 @@
 name: Pull Request Validation
 
 on:
-  push:
-    branches: ['feat/cpu-steal-chart']
   pull_request:
     branches: [master]
   workflow_dispatch:
