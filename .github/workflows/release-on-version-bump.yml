@@ -103,6 +103,12 @@ jobs:
         if: steps.version.outputs.version_changed == 'true'
         run: bun install --frozen-lockfile
 
+      - name: Run unit tests and targeted lint
+        if: steps.version.outputs.version_changed == 'true'
+        run: |
+          bun run test
+          bunx eslint src/components/LoadChart.vue src/stores/app.ts src/features/cpu-steal tests/cpu-steal
+
       - name: Build project
         if: steps.version.outputs.version_changed == 'true'
         run: bun run build
