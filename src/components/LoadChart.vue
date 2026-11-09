@@ -363,9 +363,11 @@ const cpuLegendSelected = ref<Record<string, boolean>>({ CPU: true, 负载: true
 watch([() => props.uuid, () => appStore.cpuStealDefaultVisible], () => {
   cpuLegendSelected.value = { ...cpuLegendSelected.value, Steal: appStore.cpuStealDefaultVisible }
 })
-function onCpuLegendSelectChanged(event: { selected?: Record<string, boolean> }) {
-  if (event.selected)
-    cpuLegendSelected.value = { ...event.selected }
+function onCpuLegendSelectChanged(event: unknown) {
+  // vue-echarts exposes a broader Payload type than the ECharts legend event.
+  const selected = (event as { selected?: Record<string, boolean> } | null)?.selected
+  if (selected)
+    cpuLegendSelected.value = { ...selected }
 }
 
 const latestStatus = computed(() => {
