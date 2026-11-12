@@ -25,8 +25,8 @@ bun run verify
 ## CI 与发布
 
 - [工作流](../.github/workflows/release-on-version-bump.yml) 接收 `master` 推送、面向 `master` 的 PR 和手动触发。纯文档推送跳过 CI，预览图片改动属于打包输入。Bun 从 npm 注册表安装指定版本，并对暂时下载失败重试。依赖解析使用已提交的 `bun.lock`，工作流缓存包下载。
-- CI 用只读权限完成验证。主题推送到 `Chen017/komari-theme-emerald-insights` 的 `master` 后，工作流查询当前版本是否已有完整 Release ZIP。需要发布时，发布任务取得仓库写权限并使用同次验证生成的 ZIP。PR 和手动运行可下载验证通过的安装包。
-- 准备发布可运行 `bun run publish -- --version X.Y.Z`，它同步并暂存 `package.json` 和 `komari-theme.json`。检查差异后正常提交和推送。工作流建立 `vX.Y.Z` 标签并创建或更新 Release。若标签指向其他提交，检查版本冲突。已有标签指向同一提交时，可在原运行中重试发布。
+- CI 用只读权限完成验证。推送 `master` 后，工作流对比最新正式 Release，检测主题源码、清单、预览图和构建输入的改动；需要发布时自动递增补丁版本并同步清单，验证通过后创建标签和 Release，复用同次验证生成的 ZIP。纯文档、测试和 CI 改动本身不会触发新版本。PR 和手动运行可下载验证通过的安装包。
+- 发布任务单独取得仓库写权限；失败时检查 Actions 日志并重跑原工作流。若标签指向其他提交，应先检查版本冲突。手动指定较高正式版本仍可使用 `bun run publish -- --version X.Y.Z`。
 - 锁文件解析失败时先核对 `bun --version`，当前锁文件 v3 使用 Bun 1.4.4。安装包失败时检查 `docs/preview.png`、两个清单的版本和 `dist/index.html`，然后本地复跑 `bun run verify`。
 - 用 `bun audit` 检查依赖安全。依赖覆盖仅将 `archiver-utils` 使用的 `glob` 和 TypeScript ESLint 解析器使用的 `minimatch` 指向修复版。升级各自的上游工具时复查这些覆盖与已有的 `tinypool` 补丁。
 
