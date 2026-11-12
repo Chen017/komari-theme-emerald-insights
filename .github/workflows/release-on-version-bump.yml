@@ -25,37 +25,11 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     outputs:
-      release_tag: ${{ steps.version.outputs.tag }}
+      release_tag: ${{ steps.release.outputs.tag }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-
-      - name: Detect version bump
-        id: version
-        if: github.event_name == 'push' && github.repository == 'Chen017/komari-theme-emerald-insights'
-        env:
-          BEFORE_SHA: ${{ github.event.before }}
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          if [[ "$BEFORE_SHA" =~ ^0+$ ]]; then
-            echo "No previous revision for version comparison"
-            exit 0
-          fi
-          previous="$RUNNER_TEMP/previous-package.json"
-          gh api -H 'Accept: application/vnd.github.raw+json' \
-            "repos/$GITHUB_REPOSITORY/contents/package.json?ref=$BEFORE_SHA" > "$previous"
-          node --input-type=module - "$previous" >> "$GITHUB_OUTPUT" <<'NODE'
-          import { readFileSync } from 'node:fs'
-          const read = path => JSON.parse(readFileSync(path, 'utf8')).version
-          const previous = read(process.argv[2])
-          const current = read('package.json')
-          const valid = /^\d+\.\d+\.\d+(?:[-+][\dA-Za-z.-]+)?$/
-          if (!valid.test(previous) || !valid.test(current) || current !== read('komari-theme.json'))
-            throw new Error('Invalid or inconsistent theme versions')
-          if (previous !== current)
-            console.log(`tag=v${current}`)
-          NODE
 
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
@@ -73,8 +47,47 @@ jobs:
           key: bun-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('bun.lock') }}
       - run: bun install --frozen-lockfile
       - run: bun run verify
+      - name: Install Chromium for browser tests
+        run: bun run playwright install --with-deps --only-shell chromium
+      - name: Run browser tests
+        id: browser
+        run: bun run test:browser
+      - name: Store browser failure traces
+        if: failure() && steps.browser.outcome == 'failure'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: browser-test-results
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Check whether this version needs its release ZIP
+        id: release
+        if: github.repository == 'Chen017/komari-theme-emerald-insights' && github.ref == 'refs/heads/master' && github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_ZIP: komari-theme-emerald-insights.zip
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid release version: $version" >&2
+            exit 1
+          fi
+          tag="v$version"
+          response="$RUNNER_TEMP/release.json"
+          error_log="$RUNNER_TEMP/release-error.txt"
+          if gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag" > "$response" 2> "$error_log"; then
+            asset_state=$(node -e 'const release = require(process.argv[1]); console.log(release.assets.some(asset => asset.name === process.env.RELEASE_ZIP && asset.state === "uploaded" && asset.size > 0) ? "present" : "missing")' "$response")
+            if [[ "$asset_state" == present ]]; then
+              echo "$tag already has a published ZIP."
+              exit 0
+            fi
+          elif ! grep -q 'HTTP 404' "$error_log"; then
+            cat "$error_log" >&2
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
       - name: Store verified ZIP
-        if: steps.version.outputs.tag != '' || github.event_name != 'push'
+        if: steps.release.outputs.tag != '' || github.event_name != 'push'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: komari-theme-emerald-insights

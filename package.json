@@ -25,9 +25,10 @@
     "type-check": "vue-tsc --build",
     "publish": "bun scripts/publish.ts",
     "test": "node --import jiti/register --test \"tests/**/*.test.ts\"",
+    "test:browser": "playwright test",
     "test:package": "node scripts/test-package.mjs",
     "verify": "bun run lint:check && bun run test && bun run build && bun run test:package",
-    "lint:check": "eslint vite.config.ts scripts src/utils/rpc.ts tests/utils/rpc-cancellation.test.ts src/components/LoadChart.vue src/stores/app.ts src/features/cpu-steal tests/cpu-steal",
+    "lint:check": "eslint vite.config.ts playwright.config.ts scripts src/utils/rpc.ts tests/utils/rpc-cancellation.test.ts src/components/LoadChart.vue src/stores/app.ts src/features/cpu-steal tests/cpu-steal tests/browser",
     "lint": "eslint . --fix --cache",
     "lint:eslint": "eslint . --fix --cache"
   },
@@ -49,6 +50,7 @@
   },
   "devDependencies": {
     "@antfu/eslint-config": "^7.4.3",
+    "@playwright/test": "1.65.0",
     "@tailwindcss/vite": "^4.1.16",
     "@tsconfig/node24": "^24.0.4",
     "@types/node": "^26.1.1",
@@ -68,6 +70,12 @@
     "vue-tsc": "^3.2.4"
   },
   "overrides": {
+    "@typescript-eslint/typescript-estree": {
+      "minimatch": "11.0.1"
+    },
+    "archiver-utils": {
+      "glob": "14.0.2"
+    },
     "tinypool": "2.1.2"
   }
 }

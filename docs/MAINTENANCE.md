@@ -18,15 +18,17 @@ bun run verify
 
 `verify` 检查构建脚本、运行 Node 回归、做 Vue 类型检查并构建，再检查 ZIP 内的清单、预览和 HTML 入口引用。单独调试可运行 `bun run test`、`bun run type-check` 或 `bun run preview`。改动应用代码时，额外用 `bun x eslint <文件>` 校验相关文件。`bun run lint` 会尝试修复全库格式，已有全量 lint 问题需分批处理。
 
+构建后运行 `bun run playwright install --only-shell chromium` 和 `bun run test:browser`。浏览器测试通过本地 Vite Preview 打开构建产物，用模拟的 Komari 接口验证原生 CPU/负载图表、Steal 图例、真实值提示和插件缺失时的降级。CI 运行同一套 Chromium 测试，失败时可从 Actions 下载追踪文件。
+
 正式包名为 `komari-theme-emerald-insights.zip`。运行 `bun run build:beta` 生成 `komari-theme-emerald-insights-beta-<sha>.zip`，包内版本附加 Beta 后缀，仓库版本字段保持正式版本。可通过 `bun run test:package -- <zip>` 校验指定包。两个包都包含 `dist/`、`komari-theme.json` 和根目录 `preview.png`。缺少构建产物或打包写入失败时，构建会报错并保留上一份有效 ZIP。Windows 本地构建在用户桌面存在时仍复制一份。
 
 ## CI 与发布
 
 - [工作流](../.github/workflows/release-on-version-bump.yml) 接收 `master` 推送、面向 `master` 的 PR 和手动触发。纯文档推送跳过 CI，预览图片改动属于打包输入。Bun 从 npm 注册表安装指定版本，并对暂时下载失败重试。依赖解析使用已提交的 `bun.lock`，工作流缓存包下载。
-- CI 用只读权限完成验证。仅在 `Chen017/komari-theme-emerald-insights` 的 `master` 推送中确认版本变化时，发布任务才取得仓库写权限并使用同次验证生成的 ZIP。PR 和手动运行可下载验证通过的安装包。
+- CI 用只读权限完成验证。主题推送到 `Chen017/komari-theme-emerald-insights` 的 `master` 后，工作流查询当前版本是否已有完整 Release ZIP。需要发布时，发布任务取得仓库写权限并使用同次验证生成的 ZIP。PR 和手动运行可下载验证通过的安装包。
 - 准备发布可运行 `bun run publish -- --version X.Y.Z`，它同步并暂存 `package.json` 和 `komari-theme.json`。检查差异后正常提交和推送。工作流建立 `vX.Y.Z` 标签并创建或更新 Release。若标签指向其他提交，检查版本冲突。已有标签指向同一提交时，可在原运行中重试发布。
-- 锁文件解析失败时先核对 `bun --version`，锁文件 v2 需要 Bun 1.4。安装包失败时检查 `docs/preview.png`、两个清单的版本和 `dist/index.html`，然后本地复跑 `bun run verify`。
-- 用 `bun audit` 检查依赖安全。当前 `glob` 和 `minimatch` 的两项中危通告涉及打包及 lint 工具的传递依赖，修复版超出上游声明的版本范围。更新打包或 lint 工具时复查；`tinypool` 的补丁版本暂由 `overrides` 固定。
+- 锁文件解析失败时先核对 `bun --version`，当前锁文件 v3 使用 Bun 1.4.4。安装包失败时检查 `docs/preview.png`、两个清单的版本和 `dist/index.html`，然后本地复跑 `bun run verify`。
+- 用 `bun audit` 检查依赖安全。依赖覆盖仅将 `archiver-utils` 使用的 `glob` 和 TypeScript ESLint 解析器使用的 `minimatch` 指向修复版。升级各自的上游工具时复查这些覆盖与已有的 `tinypool` 补丁。
 
 ## 兼容性与回归
 

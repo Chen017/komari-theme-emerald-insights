@@ -74,7 +74,7 @@ Do not change zip naming, manifest filename, or preview filename without updatin
 
 Source of truth: `.github/workflows/release-on-version-bump.yml`
 
-CI runs `bun install --frozen-lockfile` and `bun run verify`, covering build script lint, Node tests, type-checking, Vite build and ZIP inspection. A version change on the fork's `master` releases the same verified ZIP. See [Maintenance](docs/MAINTENANCE.md) for operational details.
+CI runs the frozen install, `bun run verify`, and `bun run test:browser` against the Vite preview. A push to the fork's `master` publishes the verified ZIP if the version does not already have a release asset. See [Maintenance](docs/MAINTENANCE.md) for operational details.
 
 ## Where to look
 
