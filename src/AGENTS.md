@@ -79,7 +79,5 @@ When you need a new piece of UI:
 
 ## Validation
 
-- Validate source-tree changes with:
-  - `bun run lint`
-  - `bun run build`
-- Run `bun run test` for behavior changes; existing tests use Node with jiti under `tests/`.
+- Run `bun x eslint <changed-files>` to lint modified source without rewriting unrelated files.
+- Run `bun run verify` for the Node regression suite, Vue type check, production build and ZIP inspection.

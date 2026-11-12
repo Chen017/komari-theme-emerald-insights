@@ -4,10 +4,9 @@ Repo guide for `komari-theme-emerald`.
 
 ## Snapshot
 
-- Generated: Wed May 27 2026, Asia/Shanghai
 - Branch: `master`
 - App: Vue 3 + Vite + reka-ui + Tailwind CSS v4 theme for Komari Monitor
-- Package manager: `bun` (>= 1.2)
+- Package manager: Bun 1.4.4 from `package.json`, with Node 24 for CI and local verification
 - Theme manifest: `komari-theme.json`
 
 ## What this repo is
@@ -38,6 +37,7 @@ bun run dev
 bun run build
 bun run preview
 bun run lint
+bun run verify
 ```
 
 Notes:
@@ -54,7 +54,8 @@ Notes:
 Expected output:
 
 - `dist/`
-- `komari-theme-emerald-build-<sha>.zip`
+- `komari-theme-emerald-insights.zip` for a normal build
+- `komari-theme-emerald-insights-beta-<sha>.zip` for `bun run build:beta`
 
 Zip contents:
 
@@ -73,12 +74,7 @@ Do not change zip naming, manifest filename, or preview filename without updatin
 
 Source of truth: `.github/workflows/release-on-version-bump.yml`
 
-The release workflow installs dependencies and builds before packaging:
-
-1. `bun install --frozen-lockfile`
-2. `bun run build`
-
-The release workflow does not currently run the existing test suite; run it locally for behavior changes.
+CI runs `bun install --frozen-lockfile` and `bun run verify`, covering build script lint, Node tests, type-checking, Vite build and ZIP inspection. A version change on the fork's `master` releases the same verified ZIP. See [Maintenance](docs/MAINTENANCE.md) for operational details.
 
 ## Where to look
 
@@ -104,7 +100,7 @@ Contributor density, useful for triage:
 - Preserve the `@` alias to `src` defined in `vite.config.ts`
 - Treat `komari-theme.json` as release input, not optional metadata
 - Treat `docs/preview.png` as release input, not just documentation art
-- Respect existing generated outputs and naming patterns, especially `komari-theme-emerald-build-<sha>.zip`
+- Preserve the stable and beta package names above.
 - Root verification is lint plus build, and `bun run test` for behavior changes
 - UI is built on `reka-ui` + Tailwind CSS v4 (shadcn-vue style under `src/components/ui/`). Do **not** reintroduce Naive UI, UnoCSS, or SCSS — they have been removed.
 

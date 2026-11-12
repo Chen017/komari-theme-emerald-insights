@@ -1,9 +1,11 @@
 import type { Plugin } from 'vite'
 import { execSync } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { createWriteStream, existsSync } from 'node:fs'
+import { access, copyFile, mkdtemp, readFile, rename, rm } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { resolve } from 'node:path'
 import process from 'node:process'
+import { pipeline } from 'node:stream/promises'
 import { fileURLToPath, URL } from 'node:url'
 import tailwindcss from '@tailwindcss/vite'
 import vue from '@vitejs/plugin-vue'
@@ -12,8 +14,8 @@ import { defineConfig } from 'vite'
 import vueDevTools from 'vite-plugin-vue-devtools'
 
 const require = createRequire(import.meta.url)
-const fs = require('node:fs')
 const archiver = require('archiver')
+const packageJson = require('./package.json')
 
 function getCommitHash(): string {
   try {
@@ -40,82 +42,49 @@ function komariThemeZip(beta: boolean, version: string, hash: string): Plugin {
   return {
     name: 'komari-theme-zip',
     apply: 'build',
-    closeBundle: async () => {
+    async writeBundle() {
       const zipFileName = beta ? `komari-theme-emerald-insights-beta-${hash}.zip` : 'komari-theme-emerald-insights.zip'
       const distDir = resolve(__dirname, 'dist')
-      const themeJsonPath = resolve(__dirname, 'komari-theme.json')
-      const previewPath = resolve(__dirname, 'docs/preview.png')
       const outputPath = resolve(__dirname, zipFileName)
+      const [manifestData, preview] = await Promise.all([
+        readFile(resolve(__dirname, 'komari-theme.json')),
+        readFile(resolve(__dirname, 'docs/preview.png')),
+        access(resolve(distDir, 'index.html')),
+      ])
+      const manifest = JSON.parse(manifestData.toString('utf8'))
+      if (manifest.version !== packageJson.version || manifest.preview !== 'preview.png')
+        throw new Error('Theme manifest version or preview does not match the Komari archive contract')
 
-      if (!existsSync(distDir)) {
-        console.log('[komari-theme-zip] dist directory not found, skipping zip creation')
-        return
-      }
-
-      // Clean up old local build zips
-      const allFiles = fs.readdirSync(__dirname)
-      for (const f of allFiles) {
-        if (f.startsWith('komari-theme-emerald-build-') && f.endsWith('.zip')) {
-          try {
-            fs.unlinkSync(resolve(__dirname, f))
-          }
-          catch {}
-        }
-      }
-
-      const output = fs.createWriteStream(outputPath)
-      const archive = archiver('zip', { zlib: { level: 9 } })
-
-      return new Promise((resolvePromise, reject) => {
-        output.on('close', () => {
-          const sizeMB = (archive.pointer() / 1024 / 1024).toFixed(2)
-          console.log(`[komari-theme-zip] Created canonical zip ${zipFileName} (${sizeMB} MB)`)
-
-          // Push to Desktop
-          const desktopDir = resolve(process.env.USERPROFILE || 'C:\\Users\\y2hlb', 'Desktop')
-          if (existsSync(desktopDir)) {
-            const desktopZip = resolve(desktopDir, beta ? zipFileName : 'komari-theme-emerald.zip')
-            try {
-              fs.copyFileSync(outputPath, desktopZip)
-              console.log(`[komari-theme-zip] Pushed to Desktop: ${desktopZip}`)
-            }
-            catch (err) {
-              console.error('[komari-theme-zip] Failed to copy to Desktop:', err)
-            }
-          }
-          resolvePromise(undefined)
-        })
-
-        archive.on('error', (err: Error) => {
-          console.error('[komari-theme-zip] Error:', err)
-          reject(err)
-        })
-
-        archive.pipe(output)
-
-        if (existsSync(themeJsonPath)) {
-          if (beta) {
-            const manifest = JSON.parse(fs.readFileSync(themeJsonPath, 'utf8'))
-            archive.append(JSON.stringify({ ...manifest, name: `${manifest.name} (Beta)`, version }, null, 2), { name: 'komari-theme.json' })
-          }
-          else {
-            archive.file(themeJsonPath, { name: 'komari-theme.json' })
-          }
-        }
-
-        if (existsSync(previewPath)) {
-          archive.file(previewPath, { name: 'preview.png' })
-        }
-
+      const stage = await mkdtemp(resolve(__dirname, '.theme-package-'))
+      try {
+        const candidate = resolve(stage, zipFileName)
+        const archive = archiver('zip', { zlib: { level: 9 } })
+        archive.on('warning', (error: Error) => archive.destroy(error))
+        archive.append(
+          beta ? JSON.stringify({ ...manifest, name: `${manifest.name} (Beta)`, version }, null, 2) : manifestData,
+          { name: 'komari-theme.json' },
+        )
+        archive.append(preview, { name: 'preview.png' })
         archive.directory(distDir, 'dist')
+        await Promise.all([pipeline(archive, createWriteStream(candidate)), archive.finalize()])
+        await rename(candidate, outputPath)
+        const sizeMB = (archive.pointer() / 1024 / 1024).toFixed(2)
+        console.log(`[komari-theme-zip] Created ${zipFileName} (${sizeMB} MB)`)
+      }
+      finally {
+        await rm(stage, { recursive: true, force: true })
+      }
 
-        archive.finalize()
-      })
+      if (process.platform === 'win32' && process.env.USERPROFILE && !process.env.CI) {
+        const desktopDir = resolve(process.env.USERPROFILE, 'Desktop')
+        if (existsSync(desktopDir)) {
+          const desktopZip = resolve(desktopDir, beta ? zipFileName : 'komari-theme-emerald.zip')
+          await copyFile(outputPath, desktopZip).catch(error => console.error('[komari-theme-zip] Desktop copy failed:', error))
+        }
+      }
     },
   }
 }
-
-const packageJson = require('./package.json')
 
 export default defineConfig(({ mode }) => {
   const beta = mode === 'beta'

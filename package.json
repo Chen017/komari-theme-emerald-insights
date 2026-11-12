@@ -2,7 +2,7 @@
   "name": "komari-theme-emerald-insights",
   "type": "module",
   "version": "2.0.13",
-  "packageManager": "bun@1.3.14",
+  "packageManager": "bun@1.4.4",
   "author": {
     "name": "Chen017",
     "url": "https://github.com/Chen017"
@@ -14,7 +14,7 @@
   },
   "engines": {
     "node": "^20.19.0 || >=22.12.0",
-    "bun": ">=1.2.0"
+    "bun": ">=1.4.0"
   },
   "scripts": {
     "dev": "vite",
@@ -25,6 +25,9 @@
     "type-check": "vue-tsc --build",
     "publish": "bun scripts/publish.ts",
     "test": "node --import jiti/register --test \"tests/**/*.test.ts\"",
+    "test:package": "node scripts/test-package.mjs",
+    "verify": "bun run lint:check && bun run test && bun run build && bun run test:package",
+    "lint:check": "eslint vite.config.ts scripts src/utils/rpc.ts tests/utils/rpc-cancellation.test.ts src/components/LoadChart.vue src/stores/app.ts src/features/cpu-steal tests/cpu-steal",
     "lint": "eslint . --fix --cache",
     "lint:eslint": "eslint . --fix --cache"
   },
@@ -46,26 +49,25 @@
   },
   "devDependencies": {
     "@antfu/eslint-config": "^7.4.3",
-    "@iconify/json": "^2.2.442",
     "@tailwindcss/vite": "^4.1.16",
     "@tsconfig/node24": "^24.0.4",
     "@types/node": "^26.1.1",
     "@vitejs/plugin-vue": "^6.0.4",
-    "@vue/eslint-config-typescript": "^14.6.0",
     "@vue/tsconfig": "^0.8.1",
     "archiver": "^7.0.1",
     "eslint": "^9.39.2",
     "eslint-plugin-format": "^1.4.0",
     "eslint-plugin-vue": "~10.8.0",
-    "https-proxy-agent": "7",
     "jiti": "^2.6.1",
     "npm-run-all2": "^8.0.4",
     "tailwindcss": "^4.1.16",
     "tw-animate-css": "^1.4.0",
     "typescript": "~5.9.3",
     "vite": "^7.3.1",
-    "vite-plugin-static-copy": "^3.2.0",
     "vite-plugin-vue-devtools": "^8.0.6",
     "vue-tsc": "^3.2.4"
+  },
+  "overrides": {
+    "tinypool": "2.1.2"
   }
 }

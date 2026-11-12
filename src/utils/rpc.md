@@ -311,6 +311,8 @@ catch (error) {
 
 ## WebSocket 模式
 
+`call(method, params, { signal })` 在 HTTP 和 WebSocket 下均支持取消。WebSocket 等待连接时取消的调用不会发送，已发送调用的迟到结果会被丢弃。取消只影响对应调用，共用连接和其他请求可继续工作。切换节点或时间范围时，历史查询可以取消已经过时的请求。
+
 WebSocket 模式适用于需要频繁调用的场景，可以减少连接开销：
 
 ```typescript

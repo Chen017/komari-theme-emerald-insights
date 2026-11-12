@@ -41,6 +41,12 @@ const WSS_PROTOCOL_PREFIX = 'wss://'
 const DEFAULT_RPC_API_BASE = '/api'
 const DEFAULT_RPC_ENDPOINT = `${DEFAULT_RPC_API_BASE}/rpc2`
 
+function getAbortError(signal: AbortSignal): Error {
+  return signal.reason instanceof Error
+    ? signal.reason
+    : new DOMException('The operation was aborted', 'AbortError')
+}
+
 function normalizeHttpBaseUrl(baseUrl: string): string {
   const trimmedBaseUrl = baseUrl.trim()
 
@@ -281,7 +287,6 @@ export class RpcClient {
   private pendingRequests: Map<number | string, {
     resolve: (value: unknown) => void
     reject: (reason: unknown) => void
-    timer: ReturnType<typeof setTimeout>
   }> = new Map()
 
   private requestId = 0
@@ -299,11 +304,7 @@ export class RpcClient {
   }
 
   private rejectPendingRequests(error: RpcError): void {
-    this.pendingRequests.forEach((pending, id) => {
-      clearTimeout(pending.timer)
-      pending.reject(error)
-      this.pendingRequests.delete(id)
-    })
+    this.pendingRequests.forEach(pending => pending.reject(error))
   }
 
   private notifyWebSocketClose(info: RpcWebSocketCloseInfo): void {
@@ -357,11 +358,8 @@ export class RpcClient {
       return this.handleResponse(data)
     }
     catch (error) {
-      if (externalSignal?.aborted) {
-        throw externalSignal.reason instanceof Error
-          ? externalSignal.reason
-          : new DOMException('The operation was aborted', 'AbortError')
-      }
+      if (externalSignal?.aborted)
+        throw getAbortError(externalSignal)
       if (error instanceof RpcError)
         throw error
       throw new RpcError(-32000, `Network error: ${error instanceof Error ? error.message : String(error)}`)
@@ -479,8 +477,6 @@ export class RpcClient {
             return
           const pending = this.pendingRequests.get(data.id)
           if (pending) {
-            clearTimeout(pending.timer)
-            this.pendingRequests.delete(data.id)
             try {
               pending.resolve(this.handleResponse(data))
             }
@@ -526,39 +522,54 @@ export class RpcClient {
   /**
    * 调用 RPC 方法（WebSocket）
    */
-  private async callWebSocket<T>(method: string, params?: Record<string, unknown> | unknown[], timeoutMs = this.timeout): Promise<T> {
-    await this.ensureWebSocketReady()
-
+  private callWebSocket<T>(
+    method: string,
+    params?: Record<string, unknown> | unknown[],
+    timeoutMs = this.timeout,
+    signal?: AbortSignal,
+  ): Promise<T> {
     return new Promise((resolve, reject) => {
-      const id = ++this.requestId
-      const request: JsonRpcRequest = {
-        jsonrpc: '2.0',
-        method,
-        params,
-        id,
-      }
-
-      const timer = setTimeout(() => {
-        this.pendingRequests.delete(id)
-        reject(new RpcError(-32001, 'Request timeout'))
-      }, timeoutMs)
-
-      this.pendingRequests.set(id, {
-        resolve: resolve as (value: unknown) => void,
-        reject,
-        timer,
-      })
-
-      // 此时 WebSocket 应该已经打开
-      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-        this.ws.send(JSON.stringify(request))
-      }
-      else {
-        // 异常情况：连接断开了，拒绝请求
-        this.pendingRequests.delete(id)
+      let id: number | undefined
+      let timer: ReturnType<typeof setTimeout> | undefined
+      const cleanup = () => {
+        if (id !== undefined)
+          this.pendingRequests.delete(id)
         clearTimeout(timer)
-        reject(new RpcError(-32000, 'WebSocket not connected'))
+        signal?.removeEventListener('abort', onAbort)
       }
+      const fail = (error: unknown) => {
+        cleanup()
+        reject(error)
+      }
+      function onAbort() {
+        if (signal)
+          fail(getAbortError(signal))
+      }
+      if (signal?.aborted) {
+        onAbort()
+        return
+      }
+      signal?.addEventListener('abort', onAbort, { once: true })
+
+      // A caller can stop waiting without aborting the shared connection.
+      this.ensureWebSocketReady().then(() => {
+        if (signal?.aborted)
+          return
+        if (!this.ws || this.ws.readyState !== WebSocket.OPEN)
+          throw new RpcError(-32000, 'WebSocket not connected')
+
+        id = ++this.requestId
+        const request: JsonRpcRequest = { jsonrpc: '2.0', method, params, id }
+        timer = setTimeout(() => fail(new RpcError(-32001, 'Request timeout')), timeoutMs)
+        this.pendingRequests.set(id, {
+          resolve: (value) => {
+            cleanup()
+            resolve(value as T)
+          },
+          reject: fail,
+        })
+        this.ws.send(JSON.stringify(request))
+      }).catch(fail)
     })
   }
 
@@ -581,7 +592,7 @@ export class RpcClient {
     options?: { signal?: AbortSignal },
   ): Promise<T> {
     if (this.useWebSocket) {
-      return this.callWebSocket<T>(method, params)
+      return this.callWebSocket<T>(method, params, this.timeout, options?.signal)
     }
     return this.callHttp<T>(method, params, options)
   }

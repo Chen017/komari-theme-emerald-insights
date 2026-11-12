@@ -42,7 +42,7 @@ __screenshots__/
 
 # Theme build output
 komari-theme-*.zip
-bun.lock
+/.theme-package-*/
 .mimocode
 .zcode
 .playwright-mcp

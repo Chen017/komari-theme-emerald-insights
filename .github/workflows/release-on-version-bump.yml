@@ -1,157 +1,130 @@
-name: Release On Version Bump
+name: Theme CI and Release
 
 on:
   push:
-    branches:
-      - master
+    branches: [master]
+    paths-ignore:
+      - README.md
+      - AGENTS.md
+      - src/AGENTS.md
+      - 'docs/**/*.md'
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: release-on-version-bump-${{ github.ref }}
-  cancel-in-progress: false
+  group: theme-${{ github.event_name }}-${{ github.event_name == 'push' && github.sha || github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'push' }}
 
 jobs:
-  release:
+  verify:
+    name: Test and verify theme package
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    outputs:
+      release_tag: ${{ steps.version.outputs.tag }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0
-
-      - name: Set up Node.js
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        with:
-          node-version: '24'
+          persist-credentials: false
 
       - name: Detect version bump
         id: version
+        if: github.event_name == 'push' && github.repository == 'Chen017/komari-theme-emerald-insights'
         env:
           BEFORE_SHA: ${{ github.event.before }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          node <<'NODE' >> "$GITHUB_OUTPUT"
-          const { execFileSync } = require('node:child_process')
-          const { readFileSync } = require('node:fs')
-
-          const zeroSha = '0000000000000000000000000000000000000000'
-          const beforeSha = process.env.BEFORE_SHA
-
-          function readJson(filePath) {
-            return JSON.parse(readFileSync(filePath, 'utf8'))
-          }
-
-          function readJsonAtRevision(revision, filePath) {
-            try {
-              const content = execFileSync('git', ['show', `${revision}:${filePath}`], { encoding: 'utf8', timeout: 5000 })
-              return JSON.parse(content)
-            }
-            catch {
-              return null
-            }
-          }
-
-          const packageJson = readJson('package.json')
-          const themeJson = readJson('komari-theme.json')
-
-          if (packageJson.version !== themeJson.version) {
-            console.error(`Version mismatch: package.json=${packageJson.version}, komari-theme.json=${themeJson.version}`)
-            process.exit(1)
-          }
-
-          const currentVersion = packageJson.version
-          let previousVersion = ''
-          let versionChanged = true
-
-          if (beforeSha && beforeSha !== zeroSha) {
-            const prev = readJsonAtRevision(beforeSha, 'package.json')
-            previousVersion = prev?.version ?? ''
-            versionChanged = previousVersion !== currentVersion
-          }
-
-          console.log(`current_version=${currentVersion}`)
-          console.log(`previous_version=${previousVersion}`)
-          console.log(`version_changed=${versionChanged}`)
-          console.log(`release_tag=v${currentVersion}`)
+          if [[ "$BEFORE_SHA" =~ ^0+$ ]]; then
+            echo "No previous revision for version comparison"
+            exit 0
+          fi
+          previous="$RUNNER_TEMP/previous-package.json"
+          gh api -H 'Accept: application/vnd.github.raw+json' \
+            "repos/$GITHUB_REPOSITORY/contents/package.json?ref=$BEFORE_SHA" > "$previous"
+          node --input-type=module - "$previous" >> "$GITHUB_OUTPUT" <<'NODE'
+          import { readFileSync } from 'node:fs'
+          const read = path => JSON.parse(readFileSync(path, 'utf8')).version
+          const previous = read(process.argv[2])
+          const current = read('package.json')
+          const valid = /^\d+\.\d+\.\d+(?:[-+][\dA-Za-z.-]+)?$/
+          if (!valid.test(previous) || !valid.test(current) || current !== read('komari-theme.json'))
+            throw new Error('Invalid or inconsistent theme versions')
+          if (previous !== current)
+            console.log(`tag=v${current}`)
           NODE
 
-      - name: Skip when version is unchanged
-        if: steps.version.outputs.version_changed != 'true'
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      # Use npm registry retries to avoid depending on GitHub Bun asset downloads.
+      - name: Install pinned Bun
         run: |
-          echo "package.json version has not changed. Skipping release."
+          bun_package=$(node -p "require('./package.json').packageManager")
+          npm install --global "$bun_package" --fetch-retries=3 --no-audit --no-fund
+          test "$(bun --version)" = "${bun_package#bun@}"
+      - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('bun.lock') }}
+      - run: bun install --frozen-lockfile
+      - run: bun run verify
+      - name: Store verified ZIP
+        if: steps.version.outputs.tag != '' || github.event_name != 'push'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: komari-theme-emerald-insights
+          path: komari-theme-emerald-insights.zip
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
 
-      # GitHub's Bun release download returned HTTP 504 while resolving
-      # bun-version: latest. Install the exact packageManager version from
-      # npm instead, with bounded retries and no dependency on GitHub assets.
-      - name: Install Bun 1.3.14 (npm registry, retry on transient failure)
-        if: steps.version.outputs.version_changed == 'true'
-        shell: bash
-        run: |
-          for attempt in 1 2 3; do
-            if npm install --global bun@1.3.14 --no-audit --no-fund; then
-              test "$(bun --version)" = "1.3.14"
-              exit 0
-            fi
-            echo "Bun install attempt ${attempt}/3 failed." >&2
-            if [ "${attempt}" -lt 3 ]; then sleep $((attempt * 10)); fi
-          done
-          echo "Could not install pinned Bun version." >&2
-          exit 1
-
-      - name: Install dependencies
-        if: steps.version.outputs.version_changed == 'true'
-        run: bun install --frozen-lockfile
-
-      - name: Run unit tests and targeted lint
-        if: steps.version.outputs.version_changed == 'true'
-        run: |
-          bun run test
-          bunx eslint src/components/LoadChart.vue src/stores/app.ts src/features/cpu-steal tests/cpu-steal
-
-      - name: Build project
-        if: steps.version.outputs.version_changed == 'true'
-        run: bun run build
-
-      - name: Check release tag state
-        if: steps.version.outputs.version_changed == 'true'
-        id: tag
+  release:
+    name: Publish verified theme ZIP
+    needs: verify
+    if: needs.verify.outputs.release_tag != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    concurrency:
+      group: theme-release-${{ needs.verify.outputs.release_tag }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: komari-theme-emerald-insights
+          path: release
+      - name: Create or verify release tag
         env:
-          RELEASE_TAG: ${{ steps.version.outputs.release_tag }}
-          CURRENT_SHA: ${{ github.sha }}
+          RELEASE_TAG: ${{ needs.verify.outputs.release_tag }}
         run: |
-          git fetch --force --tags
-
-          if git rev-parse "refs/tags/${RELEASE_TAG}" >/dev/null 2>&1; then
-            tag_sha="$(git rev-list -n 1 "${RELEASE_TAG}")"
-            if [ "${tag_sha}" != "${CURRENT_SHA}" ]; then
-              echo "Tag ${RELEASE_TAG} already exists on ${tag_sha}, not on ${CURRENT_SHA}." >&2
+          tag_ref="refs/tags/$RELEASE_TAG"
+          tags=$(git ls-remote origin "$tag_ref" "$tag_ref^{}")
+          tag_sha=$(awk -v ref="$tag_ref" '$2 == ref {sha=$1} $2 == ref "^{}" {peeled=$1} END {print (peeled ? peeled : sha)}' <<< "$tags")
+          if [[ -n "$tag_sha" ]]; then
+            if [[ "$tag_sha" != "$GITHUB_SHA" ]]; then
+              echo "Tag $RELEASE_TAG already targets $tag_sha, expected $GITHUB_SHA" >&2
               exit 1
             fi
-            echo "exists=true" >> "$GITHUB_OUTPUT"
           else
-            echo "exists=false" >> "$GITHUB_OUTPUT"
+            git -c user.name='github-actions[bot]' \
+              -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+              tag -a "$RELEASE_TAG" "$GITHUB_SHA" -m "Release $RELEASE_TAG"
+            git push origin "$tag_ref"
           fi
-
-      - name: Create and push release tag
-        if: steps.version.outputs.version_changed == 'true' && steps.tag.outputs.exists == 'false'
-        env:
-          RELEASE_TAG: ${{ steps.version.outputs.release_tag }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -a "${RELEASE_TAG}" -m "Release ${RELEASE_TAG}"
-          git push origin "${RELEASE_TAG}"
-
-      - name: Create or update GitHub release
-        if: steps.version.outputs.version_changed == 'true'
+      - name: Create or update GitHub Release
         uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3
         with:
-          tag_name: ${{ steps.version.outputs.release_tag }}
-          name: ${{ steps.version.outputs.release_tag }}
+          tag_name: ${{ needs.verify.outputs.release_tag }}
+          name: ${{ needs.verify.outputs.release_tag }}
           target_commitish: ${{ github.sha }}
           generate_release_notes: true
           overwrite_files: true
           fail_on_unmatched_files: true
-          files: |
-            komari-theme-emerald-insights.zip
+          files: release/komari-theme-emerald-insights.zip

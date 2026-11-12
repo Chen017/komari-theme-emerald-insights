@@ -278,6 +278,10 @@ Oracle-ARM;白嫖中;<TRD:1>
 
 ---
 
+## 开发与维护
+
+本地验证、安装包结构、版本发布和关键兼容约定见 [工程维护指南](docs/MAINTENANCE.md)。
+
 ## 鸣谢与开源致谢
 
 - [Komari](https://github.com/komari-monitor/komari)
