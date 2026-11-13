@@ -42,6 +42,7 @@ Modern Komari theme with CPU Steal visualization, Resource Insights, traffic tre
 | **7 天 / 30 天 / 本周期 流量趋势** | Komari Metric Store | 内置支持 | 历史流量汇聚统计 |
 | **近 30 天在线率** | [komari-plugin-availability-history](https://github.com/Chen017/komari-plugin-availability-history) | 可选 | WebSocket 实时连接事件账本 |
 | **CPU Steal 两分钟监控** | [komari-plugin-cpu-steal-monitor](https://github.com/Chen017/komari-plugin-cpu-steal-monitor) | 可选 | 独立历史/汇总 API，CPU/负载图表叠加 Steal% |
+| **线路质量告警** | [Line Quality Monitor](https://github.com/Chen017/komari-plugin-line-quality-monitor) | 可选 | 自动学习 Ping 波动和延迟，官方通知支持变慢与分阶段改善 |
 | **IPQA 质量概览与历史档案** | [komari-plugin-ipqa-alert-report](https://github.com/Chen017/komari-plugin-ipqa-alert-report) | 可选 | 归档同步、只读 API 与语义变更 |
 | **IPQA 原始数据采集** | [IP-Quality-Archive](https://github.com/Chen017/IP-Quality-Archive) | IPQA 必需 | 运行于受监控 VPS 节点 |
 | **成本与续费分析** | 无 | 内置支持 | 支持多币种汇率折算与预算分析 |
@@ -274,6 +275,7 @@ Oracle-ARM;白嫖中;<TRD:1>
 - [Komari Plugin: Availability History](https://github.com/Chen017/komari-plugin-availability-history)：基于事件账本的在线率历史与 30 天可用性插件
 - [Komari Plugin: CPU Steal Monitor](https://github.com/Chen017/komari-plugin-cpu-steal-monitor)：独立采集两分钟 CPU Steal 并提供历史/汇总 API，可选与本主题 CPU/负载图表联动
 - [Komari Plugin: IPQA Alert Report](https://github.com/Chen017/komari-plugin-ipqa-alert-report)：IP 质量归档同步与告警报告插件
+- [Line Quality Monitor](https://github.com/Chen017/komari-plugin-line-quality-monitor) · 独立后台监控线路波动、延迟退化和改善，可与主题现有 Ping 图对照
 - [IP-Quality-Archive](https://github.com/Chen017/IP-Quality-Archive)：节点端 IP 质量采集工具
 
 ---
