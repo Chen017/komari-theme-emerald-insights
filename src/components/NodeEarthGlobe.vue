@@ -41,7 +41,7 @@ const MAX_THETA = 0.65
 const CHINA_COORD = getCoordByCode('CN') ?? [35.8617, 104.1954]
 const DEFAULT_PHI = normalizePhi(-Math.PI / 2 - CHINA_COORD[1] * Math.PI / 180)
 const GLOBE_RADIUS = 0.8
-const GLOBE_SCALE = 1
+const GLOBE_SCALE = 0.9
 const MARKER_ELEVATION = 0
 let phi = DEFAULT_PHI
 let targetPhi = phi
@@ -302,6 +302,7 @@ function buildInitialOptions(): COBEOptions {
     theta,
     dark: colors.dark,
     diffuse: 1.2,
+    scale: GLOBE_SCALE,
     mapSamples: 10000, // 地图采样点数，默认 16000
     mapBrightness: colors.mapBrightness,
     baseColor: colors.baseColor,
@@ -492,7 +493,7 @@ function formatRate(bytesPerSec: number): string {
 </script>
 
 <template>
-  <div ref="containerRef" class="relative aspect-square w-full max-w-md mx-auto -translate-y-6 md:-translate-y-12">
+  <div ref="containerRef" class="relative aspect-square w-full max-w-md mx-auto -translate-y-9 md:-translate-y-15">
     <canvas
       ref="canvasRef"
       class="earth-globe-canvas absolute inset-0 w-full h-full select-none touch-none cursor-grab active:cursor-grabbing"
