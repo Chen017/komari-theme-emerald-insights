@@ -41,7 +41,7 @@ const MAX_THETA = 0.65
 const CHINA_COORD = getCoordByCode('CN') ?? [35.8617, 104.1954]
 const DEFAULT_PHI = normalizePhi(-Math.PI / 2 - CHINA_COORD[1] * Math.PI / 180)
 const GLOBE_RADIUS = 0.8
-const GLOBE_SCALE = 0.9
+const GLOBE_SCALE = 0.99
 const MARKER_ELEVATION = 0
 let phi = DEFAULT_PHI
 let targetPhi = phi
@@ -489,7 +489,7 @@ function formatRate(bytesPerSec: number): string {
 </script>
 
 <template>
-  <div ref="containerRef" class="relative aspect-square w-full max-w-md mx-auto -translate-y-18 md:-translate-y-24">
+  <div ref="containerRef" class="relative aspect-square w-full max-w-md mx-auto -translate-y-[57px] md:-translate-y-[81px]">
     <canvas
       ref="canvasRef"
       class="earth-globe-canvas absolute inset-0 w-full h-full select-none touch-none cursor-grab active:cursor-grabbing"
