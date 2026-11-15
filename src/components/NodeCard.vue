@@ -192,11 +192,11 @@ const tagDisplay = computed(() => getNodeTagDisplay(props.node, appStore.lang))
           <Badge
             v-if="tagDisplay.trafficResetTag"
             variant="outline"
-            class="!text-[11px] h-auto max-w-full min-w-0 shrink whitespace-normal break-all rounded bg-emerald-500/5 text-emerald-700 dark:text-emerald-400 border-emerald-500/20 px-1.5 inline-flex items-start justify-start gap-1"
+            class="!text-[10px] max-w-full min-w-0 shrink rounded bg-emerald-500/5 text-emerald-700 dark:text-emerald-400 border-emerald-500/20 px-1 inline-flex items-center justify-start gap-0.5"
             :title="tagDisplay.trafficResetTooltip || undefined"
           >
             <Icon icon="lucide:calendar-clock" class="size-3 shrink-0" />
-            <span class="min-w-0">{{ tagDisplay.trafficResetTag }}</span>
+            <span class="min-w-0 truncate">{{ tagDisplay.trafficResetTag }}</span>
           </Badge>
         </div>
       </div>
