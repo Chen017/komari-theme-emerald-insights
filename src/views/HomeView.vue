@@ -120,7 +120,7 @@ function getNodeItemTransitionStyle(index: number): Record<string, string> {
       :transition-key="appStore.nodeSelectedGroup"
     />
 
-    <div class="node-info p-4 pt-0 flex flex-col gap-4 relative z-1 md:pointer-events-none" :class="appStore.earthViewMode === 'hide' && 'pt-4'">
+    <div class="node-info p-4 flex flex-col gap-4 relative z-1 md:pointer-events-none" :class="appStore.earthViewMode === 'hide' ? 'pt-4' : 'pt-2'">
       <div v-if="nodesStore.groups.length" class="flex flex-wrap gap-2 pointer-events-auto">
         <Button
           v-for="group in nodesStore.groups" :key="group"

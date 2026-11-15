@@ -60,7 +60,7 @@ export interface NodePingPerTaskStat {
 }
 
 export const NODE_PING_BAR_COUNT = 10
-const CACHE_VERSION = 8
+const CACHE_VERSION = 9
 const CACHE_KEY_PREFIX = 'komari-theme-emerald:node-ping-stats'
 const FULL_LOSS_EPSILON = 1e-6
 const PING_RECORD_REFRESH_INTERVAL_MS = 60_000
@@ -117,8 +117,8 @@ function getIncludedTaskIds(records: PingRecord[]): Set<number> {
   )
 }
 
-function getCacheKey(uuid: string, hours: number): string {
-  return `${CACHE_KEY_PREFIX}:${uuid}:${hours}`
+function getCacheKey(uuid: string, hours: number, historyBucketMinutes?: number): string {
+  return `${CACHE_KEY_PREFIX}:${uuid}:${hours}:${historyBucketMinutes ?? 'auto'}`
 }
 
 function isValidHistoryPoint(value: unknown): value is NodePingHistoryPoint {
@@ -149,12 +149,12 @@ function isValidStatsState(value: unknown): value is NodePingStatsState {
     && state.perTaskStats.every(task => task && Array.isArray(task.history) && task.history.every(isValidHistoryPoint))
 }
 
-function readStatsCache(uuid: string, hours: number): NodePingStatsState | null {
+function readStatsCache(uuid: string, hours: number, historyBucketMinutes?: number): NodePingStatsState | null {
   if (typeof window === 'undefined')
     return null
 
   try {
-    const raw = window.localStorage.getItem(getCacheKey(uuid, hours))
+    const raw = window.localStorage.getItem(getCacheKey(uuid, hours, historyBucketMinutes))
     if (!raw)
       return null
 
@@ -169,13 +169,13 @@ function readStatsCache(uuid: string, hours: number): NodePingStatsState | null 
   }
 }
 
-function writeStatsCache(uuid: string, hours: number, value: NodePingStatsState): void {
+function writeStatsCache(uuid: string, hours: number, value: NodePingStatsState, historyBucketMinutes?: number): void {
   if (typeof window === 'undefined')
     return
 
   try {
     window.localStorage.setItem(
-      getCacheKey(uuid, hours),
+      getCacheKey(uuid, hours, historyBucketMinutes),
       JSON.stringify({
         version: CACHE_VERSION,
         updatedAt: new Date().toISOString(),
@@ -302,7 +302,7 @@ function retainSharedPingRecordsEntry(hours: number): () => void {
   }
 }
 
-function buildPingHistory(records: PingRecord[]): NodePingHistoryPoint[] {
+function buildPingHistory(records: PingRecord[], window?: { bucketMs: number, now: number }): NodePingHistoryPoint[] {
   const sortedRecords = records
     .map((record) => {
       const timestamp = new Date(record.time).getTime()
@@ -316,14 +316,17 @@ function buildPingHistory(records: PingRecord[]): NodePingHistoryPoint[] {
 
   const firstTime = sortedRecords[0]?.timestamp ?? 0
   const lastTime = sortedRecords.at(-1)?.timestamp ?? firstTime
-  const bucketCount = Math.min(NODE_PING_BAR_COUNT, sortedRecords.length)
-  const bucketSize = Math.max(1, (lastTime - firstTime) / bucketCount)
+  const bucketCount = window ? NODE_PING_BAR_COUNT : Math.min(NODE_PING_BAR_COUNT, sortedRecords.length)
+  const bucketSize = window ? window.bucketMs : Math.max(1, (lastTime - firstTime) / bucketCount)
+  const firstBucketStart = window
+    ? Math.floor(window.now / bucketSize) * bucketSize - (bucketCount - 1) * bucketSize
+    : firstTime
 
   return Array.from({ length: bucketCount }, (_, index) => {
-    const startTime = firstTime + bucketSize * index
-    const endTime = index === bucketCount - 1 ? lastTime + 1 : startTime + bucketSize
+    const startTime = firstBucketStart + bucketSize * index
+    const endTime = window ? startTime + bucketSize : index === bucketCount - 1 ? lastTime + 1 : startTime + bucketSize
     const bucketRecords = sortedRecords.filter(
-      record => record.timestamp >= startTime && record.timestamp < endTime,
+      record => record.timestamp >= startTime && record.timestamp < endTime && (!window || record.timestamp <= window.now),
     )
     const validLatencyRecords = bucketRecords.filter(record => record.value >= 0)
     const lostCount = bucketRecords.length - validLatencyRecords.length
@@ -361,7 +364,7 @@ function getPercentile(values: number[], percentile: number): number | null {
   return lowerValue + (upperValue - lowerValue) * (position - lowerIndex)
 }
 
-export function buildStats(records: PingRecord[], tasks: PingTaskInfo[], uuid?: string): NodePingStatsState {
+export function buildStats(records: PingRecord[], tasks: PingTaskInfo[], uuid?: string, historyWindow?: { bucketMs: number, now: number }): NodePingStatsState {
   const assignedTasks = uuid ? tasks.filter(task => task.clients?.includes(uuid)) : []
   const assignmentsKnown = Boolean(uuid) && tasks.length > 0 && tasks.every(task => task.clients !== undefined)
   const assignedIds = new Set(assignedTasks.map(task => task.id))
@@ -375,7 +378,7 @@ export function buildStats(records: PingRecord[], tasks: PingTaskInfo[], uuid?: 
     return createEmptyStats()
 
   const filteredRecords = records.filter(record => includedTaskIds.has(record.task_id))
-  const history = buildPingHistory(filteredRecords)
+  const history = buildPingHistory(filteredRecords, historyWindow)
   const taskRecords = new Map<number, PingRecord[]>()
 
   for (const record of filteredRecords) {
@@ -438,7 +441,7 @@ export function buildStats(records: PingRecord[], tasks: PingTaskInfo[], uuid?: 
       ? (taskRecs.length - validValues.length) / taskRecs.length * 100
       : null
     const name = taskNameMap.get(taskId) ?? `Ping ${taskId}`
-    return { taskId, name, avgLatency, loss, history: buildPingHistory(taskRecs) }
+    return { taskId, name, avgLatency, loss, history: buildPingHistory(taskRecs, historyWindow) }
   })
     .sort((a, b) => (taskOrderMap.get(a.taskId) ?? Infinity) - (taskOrderMap.get(b.taskId) ?? Infinity) || a.taskId - b.taskId)
 
@@ -456,6 +459,7 @@ export function useNodePingStats(
   uuid: MaybeRefOrGetter<string>,
   options?: {
     hours?: MaybeRefOrGetter<number>
+    historyBucketMinutes?: number
     enabled?: MaybeRefOrGetter<boolean>
   },
 ) {
@@ -506,10 +510,14 @@ export function useNodePingStats(
     const entry = getSharedPingRecordsEntry(hours)
     const state = entry.data.value
     if (!state)
-      return readStatsCache(nodeUuid, hours) ?? createEmptyStats()
+      return readStatsCache(nodeUuid, hours, options?.historyBucketMinutes) ?? createEmptyStats()
 
     const records = state.recordsByClient.get(nodeUuid) ?? []
-    return buildStats(records, state.tasks, nodeUuid)
+    const bucketMinutes = options?.historyBucketMinutes
+    const historyWindow = bucketMinutes && Number.isFinite(bucketMinutes) && bucketMinutes > 0
+      ? { bucketMs: bucketMinutes * 60_000, now: Date.now() }
+      : undefined
+    return buildStats(records, state.tasks, nodeUuid, historyWindow)
   })
 
   // 副作用：按需触发首次共享加载并维护 loading/error，不再命令式写入 stats。
@@ -564,7 +572,7 @@ export function useNodePingStats(
   // 共享记录会定时刷新，节流回写 localStorage，避免多节点同时重算时密集写盘。
   const persistStats = useThrottleFn(
     (nodeUuid: string, hours: number, value: NodePingStatsState) => {
-      writeStatsCache(nodeUuid, hours, value)
+      writeStatsCache(nodeUuid, hours, value, options?.historyBucketMinutes)
     },
     PING_RECORD_REFRESH_INTERVAL_MS,
     true,

@@ -18,6 +18,31 @@ it('only actual probes enter loss aggregation; online full-loss tasks remain vis
   assert.equal(failed.avgLatency, -1)
 })
 
+it('uses fixed three-minute ping buckets and leaves missing intervals empty', () => {
+  const now = Date.parse('2026-10-22T12:01:00Z')
+  const sample = { client: 'n', task_id: 1 }
+  const records = [
+    { ...sample, time: '2026-10-22T11:32:59Z', value: 999 },
+    { ...sample, time: '2026-10-22T11:54:00Z', value: 30 },
+    { ...sample, time: '2026-10-22T11:56:59Z', value: -1 },
+    { ...sample, time: '2026-10-22T12:00:30Z', value: 20 },
+    { ...sample, time: '2026-10-22T12:02:00Z', value: 500 },
+  ]
+  const tasks = [{ id: 1, name: 'Ping', clients: ['n'] }]
+  const window = { bucketMs: 180_000, now }
+  const history = buildStats(records, tasks, 'n', window).perTaskStats[0]!.history
+  assert.equal(history.length, 10)
+  assert.equal(history[0]!.time, '2026-10-22T11:33:00.000Z')
+  assert.equal(history[7]!.time, '2026-10-22T11:54:00.000Z')
+  assert.deepEqual([history[7]!.latency, history[7]!.loss], [30, 50])
+  assert.deepEqual([history[8]!.latency, history[8]!.loss], [null, null])
+  assert.deepEqual([history[9]!.latency, history[9]!.loss], [20, 0])
+  const beforeBoundary = buildStats(records, tasks, 'n', { ...window, now: now + 119_000 }).perTaskStats[0]!.history
+  const afterBoundary = buildStats(records, tasks, 'n', { ...window, now: now + 120_000 }).perTaskStats[0]!.history
+  assert.equal(beforeBoundary[0]!.time, history[0]!.time)
+  assert.equal(afterBoundary[0]!.time, '2026-10-22T11:36:00.000Z')
+})
+
 it('fills the shared card slots from the node assignments in Komari order', () => {
   const tasks = [
     { id: 4, name: 'Fallback', clients: ['n'] },

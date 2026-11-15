@@ -75,7 +75,7 @@ const homeTasks = [
   { id: 3, name: 'Fallback route', clients: [edgeUuid] },
 ]
 
-async function mockKomari(page: Page, baseURL: string, pluginStatus: 200 | 404, ping = false, homeLineCount?: number, earthViewMode = 'hide', edgeOffline = false, speeds?: { up: number, down: number }) {
+async function mockKomari(page: Page, baseURL: string, pluginStatus: 200 | 404, ping = false, homeLineCount?: number, earthViewMode = 'hide', edgeOffline = false, speeds?: { up: number, down: number }, hasGroup = true) {
   await page.clock.setFixedTime(now)
   await page.route('**/*', (route) => {
     const request = route.request()
@@ -113,7 +113,7 @@ async function mockKomari(page: Page, baseURL: string, pluginStatus: 200 | 404, 
         const homeResults: Record<string, unknown> = homeLineCount
           ? {
               'common:getNodes': {
-                [uuid]: { ...node, group: 'Japan', tags: '<TRD:10>', price: 39, billing_cycle: 365 },
+                [uuid]: { ...node, group: hasGroup ? 'Japan' : '', tags: '<TRD:10>', price: 39, billing_cycle: 365 },
                 [edgeUuid]: { ...node, uuid: edgeUuid, name: 'Edge fixture node' },
               },
               'common:getNodesLatestStatus': {
@@ -192,6 +192,14 @@ test('homepage ping slots share the configured count and use native task fallbac
     const history = panel.locator('[data-ping-task="1"] .grid-cols-10')
     await expect(history.locator('span')).toHaveCount(10)
     await expect(history.locator('span').last()).toHaveAttribute('title', /\d\d:\d\d:\d\d · /)
+    const titles = await history.locator('span').evaluateAll(segments => segments.map(segment => segment.getAttribute('title') || ''))
+    const seconds = (title: string) => {
+      const [hours, minutes, seconds] = title.slice(0, 8).split(':').map(Number)
+      return hours! * 3600 + minutes! * 60 + seconds!
+    }
+    expect((seconds(titles[9]!) - seconds(titles[8]!) + 86400) % 86400).toBe(180)
+    expect(titles[8]).toContain(panel === latency ? '25 ms' : '0.0%')
+    expect(titles[9]).toContain('暂无采样')
     expect(await history.locator('span').last().evaluate(segment => Number.parseFloat(getComputedStyle(segment).borderTopLeftRadius))).toBeGreaterThan(1)
   }
   await expect(card.getByText(/¥\s*39|在线\s*8\s*天/)).toHaveCount(0)
@@ -280,6 +288,21 @@ test('globe and map show six compact summary cards in two rows', async ({ page, 
         expect(Math.abs(bounds!.x - expectedLeft)).toBeLessThan(1)
       }
     }
+    await page.unrouteAll({ behavior: 'wait' })
+  }
+})
+
+test('summary and node cards have 24px vertical separation', async ({ page, baseURL }) => {
+  for (const mode of ['earth', 'maps', 'cards']) {
+    await mockKomari(page, baseURL!, 404, true, 3, mode, false, undefined, false)
+    await page.goto('/')
+    const summary = page.getByText('月均成本', { exact: true }).locator('xpath=ancestor::div[contains(concat(" ", normalize-space(@class), " "), " group ")][1]')
+    const card = page.locator('.node-card').filter({ hasText: node.name })
+    await expect(summary).toBeVisible()
+    await expect(card).toBeVisible()
+    const summaryBounds = await summary.boundingBox()
+    const nodeBounds = await card.boundingBox()
+    expect(nodeBounds!.y - (summaryBounds!.y + summaryBounds!.height)).toBeCloseTo(24, 0)
     await page.unrouteAll({ behavior: 'wait' })
   }
 })

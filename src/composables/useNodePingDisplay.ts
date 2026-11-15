@@ -48,7 +48,7 @@ function buildBars(points: NodePingHistoryPoint[], metric: 'latency' | 'loss', e
 
 export function useNodePingDisplay(uuid: MaybeRefOrGetter<string>) {
   const appStore = useAppStore()
-  const ping = useNodePingStats(uuid, { hours: 1 })
+  const ping = useNodePingStats(uuid, { hours: 1, historyBucketMinutes: 3 })
 
   return computed(() => selectHomePingTasks(
     ping.perTaskStats.value,
