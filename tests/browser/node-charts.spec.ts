@@ -236,6 +236,30 @@ test('homepage shows remaining summary cards and centers the traffic reset label
   }
 })
 
+test('globe and map summary cards retain their original single-row height', async ({ page, baseURL }) => {
+  for (const mode of ['earth', 'maps']) {
+    await mockKomari(page, baseURL!, 404, true, 3, mode)
+    await page.goto('/')
+    const cards = ['剩余价值', '实时上行', '实时下行'].map(label => page.getByText(label, { exact: true }).first().locator('xpath=ancestor::div[contains(concat(" ", normalize-space(@class), " "), " group ")][1]'))
+    for (const card of cards)
+      await expect(card).toBeVisible()
+    const grid = cards[1]!.locator('..')
+    for (const width of [1280, 360]) {
+      await page.setViewportSize({ width, height: 900 })
+      const gridBounds = await grid.boundingBox()
+      const gap = await grid.evaluate(element => Number.parseFloat(getComputedStyle(element).rowGap))
+      expect(gridBounds).not.toBeNull()
+      for (const card of cards) {
+        const bounds = await card.boundingBox()
+        expect(bounds).not.toBeNull()
+        expect(Math.abs(bounds!.height - (gridBounds!.height - gap) / 2)).toBeLessThan(1)
+        expect(Math.abs(bounds!.y - gridBounds!.y)).toBeLessThan(1)
+      }
+    }
+    await page.unrouteAll({ behavior: 'wait' })
+  }
+})
+
 async function openCpuChart(page: Page, baseURL: string, pluginStatus: 200 | 404) {
   await mockKomari(page, baseURL, pluginStatus)
   const pluginResponse = page.waitForResponse(response => new URL(response.url()).pathname === stealHistory)
