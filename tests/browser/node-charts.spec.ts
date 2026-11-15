@@ -33,7 +33,7 @@ const records = Array.from({ length: 5 }, (_, index) => ({
   load: 0.75,
   ram: 2 ** 29,
   disk: 2 ** 31,
-  net_in: 1024,
+  net_in: 2048,
   net_out: 1024,
   process: 50,
   connections: 4,
@@ -75,7 +75,7 @@ const homeTasks = [
   { id: 3, name: 'Fallback route', clients: [edgeUuid] },
 ]
 
-async function mockKomari(page: Page, baseURL: string, pluginStatus: 200 | 404, ping = false, homeLineCount?: number, earthViewMode = 'hide') {
+async function mockKomari(page: Page, baseURL: string, pluginStatus: 200 | 404, ping = false, homeLineCount?: number, earthViewMode = 'hide', edgeOffline = false) {
   await page.clock.setFixedTime(now)
   await page.route('**/*', (route) => {
     const request = route.request()
@@ -118,7 +118,7 @@ async function mockKomari(page: Page, baseURL: string, pluginStatus: 200 | 404, 
               },
               'common:getNodesLatestStatus': {
                 [uuid]: { ...records.at(-1), load5: 0.3, load15: 0.2, uptime: 8 * 86400 },
-                [edgeUuid]: { ...records.at(-1), client: edgeUuid, uptime: 8 * 86400 },
+                [edgeUuid]: { ...records.at(-1), client: edgeUuid, online: !edgeOffline, uptime: 8 * 86400 },
               },
               'public:getPublicPingTasks': homeTasks,
               'common:getRecords': call.params?.type === 'ping'
@@ -219,9 +219,7 @@ test('homepage shows remaining summary cards and centers the traffic reset label
   await page.goto('/')
   const card = page.locator('.node-card').filter({ hasText: node.name })
   await expect(card).toBeVisible()
-  for (const label of ['内存用量', '硬盘用量'])
-    await expect(page.getByText(label, { exact: true })).toHaveCount(0)
-  for (const label of ['剩余价值', '实时上行', '实时下行'])
+  for (const label of ['内存用量', '硬盘用量', '累计流量', '剩余价值', '实时上行', '实时下行'])
     await expect(page.getByText(label, { exact: true }).first()).toBeVisible()
   const reset = card.getByText(/流量重置日：10/).locator('..')
   await expect(reset).toBeVisible()
@@ -236,27 +234,50 @@ test('homepage shows remaining summary cards and centers the traffic reset label
   }
 })
 
-test('globe and map summary cards retain their original single-row height', async ({ page, baseURL }) => {
+test('globe and map show six compact summary cards in two rows', async ({ page, baseURL }) => {
   for (const mode of ['earth', 'maps']) {
     await mockKomari(page, baseURL!, 404, true, 3, mode)
     await page.goto('/')
-    const cards = ['剩余价值', '实时上行', '实时下行'].map(label => page.getByText(label, { exact: true }).first().locator('xpath=ancestor::div[contains(concat(" ", normalize-space(@class), " "), " group ")][1]'))
+    const labels = ['内存用量', '剩余价值', '实时上行', '硬盘用量', '累计流量', '实时下行']
+    const cards = labels.map(label => page.getByText(label, { exact: true }).first().locator('xpath=ancestor::div[contains(concat(" ", normalize-space(@class), " "), " group ")][1]'))
     for (const card of cards)
       await expect(card).toBeVisible()
-    const grid = cards[1]!.locator('..')
+    const grid = cards[0]!.locator('..')
     for (const width of [1280, 360]) {
       await page.setViewportSize({ width, height: 900 })
       const gridBounds = await grid.boundingBox()
       const gap = await grid.evaluate(element => Number.parseFloat(getComputedStyle(element).rowGap))
       expect(gridBounds).not.toBeNull()
-      for (const card of cards) {
+      for (const [index, card] of cards.entries()) {
         const bounds = await card.boundingBox()
         expect(bounds).not.toBeNull()
-        expect(Math.abs(bounds!.height - (gridBounds!.height - gap) / 2)).toBeLessThan(1)
-        expect(Math.abs(bounds!.y - gridBounds!.y)).toBeLessThan(1)
+        const expectedHeight = (gridBounds!.height - gap) / 2
+        expect(Math.abs(bounds!.height - expectedHeight)).toBeLessThan(1)
+        expect(Math.abs(bounds!.y - gridBounds!.y - (index < 3 ? 0 : expectedHeight + gap))).toBeLessThan(1)
       }
     }
     await page.unrouteAll({ behavior: 'wait' })
+  }
+})
+
+test('node cards show upload and download speed in place of disk and keep offline status', async ({ page, baseURL }) => {
+  await mockKomari(page, baseURL!, 404, true, 3, 'hide', true)
+  await page.goto('/')
+  const card = page.locator('.node-card').filter({ hasText: node.name })
+  const offline = page.locator('.node-card').filter({ hasText: 'Edge fixture node' })
+  await expect(card.getByLabel('实时网速')).toBeVisible()
+  await expect(card.getByLabel('上行网速')).toHaveText('1 KB/s')
+  await expect(card.getByLabel('下行网速')).toHaveText('2 KB/s')
+  await expect(card.getByText('硬盘', { exact: true })).toHaveCount(0)
+  await expect(card.getByLabel('实时速率')).toHaveCount(0)
+  await expect(card.getByLabel('累计流量')).toHaveCount(0)
+  await expect(offline.getByText('离线', { exact: true })).toBeVisible()
+  await expect(offline.getByLabel('上行网速')).toHaveText('—')
+  await expect(offline.getByLabel('下行网速')).toHaveText('—')
+  for (const width of [1280, 360]) {
+    await page.setViewportSize({ width, height: 900 })
+    expect(await card.evaluate(element => element.scrollWidth)).toBeLessThanOrEqual(await card.evaluate(element => element.clientWidth))
+    await expect(card.getByRole('region', { name: '延迟' })).toBeVisible()
   }
 })
 

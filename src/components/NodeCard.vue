@@ -11,7 +11,7 @@ import { useBackgroundSurface } from '@/composables/useBackgroundSurface'
 import { useNodeFormatters } from '@/composables/useNodeFormatters'
 import { useAppStore } from '@/stores/app'
 import { formatDateTime, getStatus } from '@/utils/helper'
-import { getDiskPercentage, getMemPercentage, getNodeTagDisplay, getTrafficUsed, getTrafficUsedPercentage, hasRegion, showTrafficProgress } from '@/utils/nodeHelpers'
+import { getMemPercentage, getNodeTagDisplay, getTrafficUsed, getTrafficUsedPercentage, hasRegion, showTrafficProgress } from '@/utils/nodeHelpers'
 import { getOSImage, getOSName } from '@/utils/osImageHelper'
 import { getFlagSrc, getRegionDisplayName } from '@/utils/regionHelper'
 
@@ -31,8 +31,6 @@ const offlineTime = computed(() => formatDateTime(props.node.time))
 const cpuStatus = computed(() => getStatus(props.node.cpu ?? 0))
 const memPercentage = computed(() => getMemPercentage(props.node))
 const memStatus = computed(() => getStatus(memPercentage.value))
-const diskPercentage = computed(() => getDiskPercentage(props.node))
-const diskStatus = computed(() => getStatus(diskPercentage.value))
 
 const trafficUsedPercentage = computed(() => getTrafficUsedPercentage(props.node))
 const trafficUsed = computed(() => getTrafficUsed(props.node))
@@ -57,6 +55,7 @@ const tagDisplay = computed(() => getNodeTagDisplay(props.node, appStore.lang))
         <div class="text-md font-bold flex-1 min-w-0 truncate">
           {{ props.node.name }}
         </div>
+        <span v-if="!props.node.online" class="shrink-0 text-xs text-destructive" :title="offlineTime">离线</span>
       </div>
     </template>
 
@@ -112,18 +111,24 @@ const tagDisplay = computed(() => getNodeTagDisplay(props.node, appStore.lang))
             </DataTooltip>
           </div>
 
-          <!-- 硬盘 -->
-          <div class="flex flex-col gap-1">
-            <div class="w-full text-xs flex flex-row justify-between">
-              <span class="flex items-center gap-1 text-muted-foreground">
-                <Icon icon="lucide:hard-drive" class="size-3.5 text-amber-600 dark:text-amber-400" aria-hidden="true" />
-                硬盘
-              </span>
-              <span>{{ diskPercentage.toFixed(1) }}%</span>
+          <!-- 实时网速 -->
+          <div class="flex min-w-0 flex-col gap-1" aria-label="实时网速">
+            <div class="flex items-center gap-1 text-xs text-muted-foreground">
+              <svg class="size-3.5 shrink-0 text-amber-600 dark:text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="3" y="4" width="18" height="16" rx="3" />
+                <path d="M8 15V9m-2 2 2-2 2 2M16 9v6m-2-2 2 2 2-2" />
+              </svg>
+              网速
             </div>
-            <ProgressThin :percentage="diskPercentage" :status="diskStatus" :height="4" />
-            <div class="text-[11px] text-muted-foreground truncate">
-              {{ formatBytes(props.node.disk ?? 0) }} / {{ formatBytes(props.node.disk_total ?? 0) }}
+            <div class="space-y-0 text-[11px] leading-4 tabular-nums">
+              <div class="flex min-w-0 items-center gap-1 text-emerald-700 dark:text-emerald-400" aria-label="上行网速">
+                <svg class="size-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 14 6-6 6 6" /></svg>
+                <span class="truncate" :title="props.node.online ? formatBytesPerSecond(props.node.net_out ?? 0) : '离线'">{{ props.node.online ? formatBytesPerSecond(props.node.net_out ?? 0) : '—' }}</span>
+              </div>
+              <div class="flex min-w-0 items-center gap-1 text-blue-700 dark:text-blue-400" aria-label="下行网速">
+                <svg class="size-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 10 6 6 6-6" /></svg>
+                <span class="truncate" :title="props.node.online ? formatBytesPerSecond(props.node.net_in ?? 0) : '离线'">{{ props.node.online ? formatBytesPerSecond(props.node.net_in ?? 0) : '—' }}</span>
+              </div>
             </div>
           </div>
 
@@ -140,42 +145,6 @@ const tagDisplay = computed(() => getNodeTagDisplay(props.node, appStore.lang))
             <div class="truncate text-[11px] text-muted-foreground">
               {{ formatBytes(trafficUsed) }} /
               {{ showTrafficProgress(props.node) ? formatBytes(props.node.traffic_limit) : '∞' }}
-            </div>
-          </div>
-        </div>
-
-        <div class="relative">
-          <div
-            v-if="!props.node.online"
-            class="absolute inset-0 z-10 flex flex-col items-center justify-center text-[11px] text-muted-foreground"
-          >
-            <span class="text-sm text-destructive">离线</span>
-            <span>{{ offlineTime }}</span>
-          </div>
-          <div
-            class="grid grid-cols-2 gap-1.5 text-[11px] tabular-nums"
-            :class="!props.node.online && 'pointer-events-none blur-xs opacity-60'"
-            :aria-hidden="!props.node.online || undefined"
-          >
-            <div class="min-w-0 space-y-0.5 rounded-lg bg-muted/65 px-1.5 py-1.5 dark:bg-muted/55 sm:px-2" aria-label="实时速率">
-              <div class="flex items-center gap-0.5 whitespace-nowrap text-emerald-700 dark:text-emerald-400">
-                <Icon icon="lucide:chevron-up" class="size-3 shrink-0" aria-hidden="true" />
-                <span class="truncate" :title="formatBytesPerSecond(props.node.net_out ?? 0)">{{ formatBytesPerSecond(props.node.net_out ?? 0) }}</span>
-              </div>
-              <div class="flex items-center gap-0.5 whitespace-nowrap text-blue-700 dark:text-blue-400">
-                <Icon icon="lucide:chevron-down" class="size-3 shrink-0" aria-hidden="true" />
-                <span class="truncate" :title="formatBytesPerSecond(props.node.net_in ?? 0)">{{ formatBytesPerSecond(props.node.net_in ?? 0) }}</span>
-              </div>
-            </div>
-            <div class="min-w-0 space-y-0.5 rounded-lg bg-muted/65 px-1.5 py-1.5 dark:bg-muted/55 sm:px-2" aria-label="累计流量">
-              <div class="flex items-center gap-0.5 whitespace-nowrap">
-                <Icon icon="lucide:upload" class="size-3 shrink-0 text-muted-foreground" aria-hidden="true" />
-                <span class="truncate" :title="formatBytes(props.node.net_total_up ?? 0)">{{ formatBytes(props.node.net_total_up ?? 0) }}</span>
-              </div>
-              <div class="flex items-center gap-0.5 whitespace-nowrap">
-                <Icon icon="lucide:download" class="size-3 shrink-0 text-muted-foreground" aria-hidden="true" />
-                <span class="truncate" :title="formatBytes(props.node.net_total_down ?? 0)">{{ formatBytes(props.node.net_total_down ?? 0) }}</span>
-              </div>
             </div>
           </div>
         </div>
