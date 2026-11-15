@@ -75,7 +75,7 @@ const homeTasks = [
   { id: 3, name: 'Fallback route', clients: [edgeUuid] },
 ]
 
-async function mockKomari(page: Page, baseURL: string, pluginStatus: 200 | 404, ping = false, homeLineCount?: number) {
+async function mockKomari(page: Page, baseURL: string, pluginStatus: 200 | 404, ping = false, homeLineCount?: number, earthViewMode = 'hide') {
   await page.clock.setFixedTime(now)
   await page.route('**/*', (route) => {
     const request = route.request()
@@ -98,7 +98,7 @@ async function mockKomari(page: Page, baseURL: string, pluginStatus: 200 | 404, 
                 rpcTransportMode: 'http',
                 enable_node_detail_ipqa: false,
                 ...(homeLineCount && {
-                  earthViewMode: 'hide',
+                  earthViewMode,
                   visitorInfoCardEnabled: false,
                   disablePageAnimation: true,
                   homePingLineCount: homeLineCount,
@@ -113,7 +113,7 @@ async function mockKomari(page: Page, baseURL: string, pluginStatus: 200 | 404, 
         const homeResults: Record<string, unknown> = homeLineCount
           ? {
               'common:getNodes': {
-                [uuid]: { ...node, price: 39, billing_cycle: 365 },
+                [uuid]: { ...node, group: 'Japan', tags: '<TRD:10>', price: 39, billing_cycle: 365 },
                 [edgeUuid]: { ...node, uuid: edgeUuid, name: 'Edge fixture node' },
               },
               'common:getNodesLatestStatus': {
@@ -202,11 +202,38 @@ test('homepage ping slots share the configured count and use native task fallbac
   expect(await card.evaluate(element => element.scrollWidth)).toBeLessThanOrEqual(await card.evaluate(element => element.clientWidth))
   await page.setViewportSize({ width: 1280, height: 900 })
 
-  await page.getByRole('button', { name: '列表视图' }).click()
-  await expect(page.locator('[data-node-ping-panels]')).toHaveCount(2)
-  for (const panel of await page.locator('[data-ping-panel="latency"]').all())
-    await expect(panel.locator('[data-ping-task]')).toHaveCount(6)
-  await expect(page.getByText('三网', { exact: true })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: '列表视图' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: '卡片视图' })).toHaveCount(0)
+  await expect(page.getByPlaceholder('搜索节点名称、地区、系统')).toHaveCount(0)
+  await expect(page.getByText('全部节点', { exact: true })).toHaveCount(0)
+  const group = page.getByRole('button', { name: 'Japan' })
+  await group.click()
+  await expect(edge).toHaveCount(0)
+  await group.click()
+  await expect(edge).toBeVisible()
+})
+
+test('homepage shows remaining summary cards and centers the traffic reset label', async ({ page, baseURL }) => {
+  await mockKomari(page, baseURL!, 404, true, 3, 'cards')
+  await page.addInitScript(() => localStorage.setItem('nodeViewMode', 'list'))
+  await page.goto('/')
+  const card = page.locator('.node-card').filter({ hasText: node.name })
+  await expect(card).toBeVisible()
+  for (const label of ['内存用量', '硬盘用量'])
+    await expect(page.getByText(label, { exact: true })).toHaveCount(0)
+  for (const label of ['剩余价值', '实时上行', '实时下行'])
+    await expect(page.getByText(label, { exact: true }).first()).toBeVisible()
+  const reset = card.getByText(/流量重置日：10/).locator('..')
+  await expect(reset).toBeVisible()
+  for (const width of [1280, 360]) {
+    await page.setViewportSize({ width, height: 900 })
+    const bounds = await reset.boundingBox()
+    const parent = await reset.locator('..').boundingBox()
+    expect(bounds).not.toBeNull()
+    expect(parent).not.toBeNull()
+    expect(Math.abs((bounds!.x + bounds!.width / 2) - (parent!.x + parent!.width / 2))).toBeLessThan(1)
+    expect(await card.evaluate(element => element.scrollWidth)).toBeLessThanOrEqual(await card.evaluate(element => element.clientWidth))
+  }
 })
 
 async function openCpuChart(page: Page, baseURL: string, pluginStatus: 200 | 404) {
