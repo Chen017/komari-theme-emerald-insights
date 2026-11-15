@@ -75,7 +75,7 @@ const homeTasks = [
   { id: 3, name: 'Fallback route', clients: [edgeUuid] },
 ]
 
-async function mockKomari(page: Page, baseURL: string, pluginStatus: 200 | 404, ping = false, homeLineCount?: number, earthViewMode = 'hide', edgeOffline = false) {
+async function mockKomari(page: Page, baseURL: string, pluginStatus: 200 | 404, ping = false, homeLineCount?: number, earthViewMode = 'hide', edgeOffline = false, speeds?: { up: number, down: number }) {
   await page.clock.setFixedTime(now)
   await page.route('**/*', (route) => {
     const request = route.request()
@@ -117,7 +117,7 @@ async function mockKomari(page: Page, baseURL: string, pluginStatus: 200 | 404, 
                 [edgeUuid]: { ...node, uuid: edgeUuid, name: 'Edge fixture node' },
               },
               'common:getNodesLatestStatus': {
-                [uuid]: { ...records.at(-1), load5: 0.3, load15: 0.2, uptime: 8 * 86400 },
+                [uuid]: { ...records.at(-1), net_out: speeds?.up ?? 1024, net_in: speeds?.down ?? 2048, load5: 0.3, load15: 0.2, uptime: 8 * 86400 },
                 [edgeUuid]: { ...records.at(-1), client: edgeUuid, online: !edgeOffline, uptime: 8 * 86400 },
               },
               'public:getPublicPingTasks': homeTasks,
@@ -188,7 +188,12 @@ test('homepage ping slots share the configured count and use native task fallbac
   await expect(card.getByRole('button', { name: `${pingTask} 丢包 0.0%` })).toBeVisible()
   await expect(latency.getByText('延迟', { exact: true })).toHaveCount(0)
   await expect(card.getByRole('region', { name: '丢包' }).getByText('丢包', { exact: true })).toHaveCount(0)
-  await expect(latency.locator('.grid-cols-10')).toHaveCount(0)
+  for (const panel of [latency, card.getByRole('region', { name: '丢包' })]) {
+    const history = panel.locator('[data-ping-task="1"] .grid-cols-10')
+    await expect(history.locator('span')).toHaveCount(10)
+    await expect(history.locator('span').last()).toHaveAttribute('title', /\d\d:\d\d:\d\d · /)
+    expect(await history.locator('span').last().evaluate(segment => Number.parseFloat(getComputedStyle(segment).borderTopLeftRadius))).toBeGreaterThan(1)
+  }
   await expect(card.getByText(/¥\s*39|在线\s*8\s*天/)).toHaveCount(0)
   expect(await card.evaluate(element => element.offsetHeight)).toBe(await edge.evaluate(element => element.offsetHeight))
 
@@ -280,11 +285,12 @@ test('globe and map show six compact summary cards in two rows', async ({ page, 
 })
 
 test('node cards show upload and download speed in place of disk and keep offline status', async ({ page, baseURL }) => {
-  await mockKomari(page, baseURL!, 404, true, 3, 'hide', true)
+  const speeds = { up: 1024, down: 2048 }
+  await mockKomari(page, baseURL!, 404, true, 3, 'hide', true, speeds)
   await page.goto('/')
   const card = page.locator('.node-card').filter({ hasText: node.name })
   const offline = page.locator('.node-card').filter({ hasText: 'Edge fixture node' })
-  await expect(card.getByLabel('实时网速')).toBeVisible()
+  await expect(card.getByLabel('实时网速', { exact: true })).toBeVisible()
   await expect(card.getByLabel('上行网速')).toHaveText('1 KB/s')
   await expect(card.getByLabel('下行网速')).toHaveText('2 KB/s')
   await expect(card.getByText('硬盘', { exact: true })).toHaveCount(0)
@@ -293,6 +299,19 @@ test('node cards show upload and download speed in place of disk and keep offlin
   await expect(offline.getByText('离线', { exact: true })).toBeVisible()
   await expect(offline.getByLabel('上行网速')).toHaveText('—')
   await expect(offline.getByLabel('下行网速')).toHaveText('—')
+  const share = card.getByRole('img', { name: /实时网速比例/ })
+  await expect(share).toHaveAttribute('aria-label', '实时网速比例：上行 33.3%，下行 66.7%')
+  expect(await share.locator('[data-speed-up-share]').evaluate(element => Number.parseFloat(element.style.width))).toBeCloseTo(100 / 3, 3)
+  expect(await share.locator('[data-speed-down-share]').evaluate(element => Number.parseFloat(element.style.width))).toBeCloseTo(200 / 3, 3)
+  await expect(offline.getByRole('img', { name: /实时网速比例/ })).toHaveAttribute('aria-label', '实时网速比例：上行 0.0%，下行 0.0%')
+  speeds.up = 3072
+  speeds.down = 1024
+  await expect(share).toHaveAttribute('aria-label', '实时网速比例：上行 75.0%，下行 25.0%', { timeout: 8000 })
+  speeds.up = 0
+  speeds.down = 0
+  await expect(share).toHaveAttribute('aria-label', '实时网速比例：上行 0.0%，下行 0.0%', { timeout: 8000 })
+  await expect(share.locator('[data-speed-up-share]')).toHaveCSS('width', '0px')
+  await expect(share.locator('[data-speed-down-share]')).toHaveCSS('width', '0px')
   for (const width of [1280, 360]) {
     await page.setViewportSize({ width, height: 900 })
     expect(await card.evaluate(element => element.scrollWidth)).toBeLessThanOrEqual(await card.evaluate(element => element.clientWidth))
@@ -302,6 +321,9 @@ test('node cards show upload and download speed in place of disk and keep offlin
     expect(down).not.toBeNull()
     expect(Math.abs(up!.y - down!.y)).toBeLessThan(1)
     expect(down!.x).toBeGreaterThan(up!.x)
+    const track = await share.boundingBox()
+    expect(track).not.toBeNull()
+    expect(track!.y).toBeLessThan(up!.y)
     await expect(card.getByRole('region', { name: '延迟' })).toBeVisible()
   }
 })

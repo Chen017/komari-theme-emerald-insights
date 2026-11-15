@@ -48,6 +48,14 @@ const panels = [
             </span>
             <span class="shrink-0 whitespace-nowrap font-medium tabular-nums">{{ row[panel.key].value }}</span>
           </span>
+          <span class="grid grid-cols-10 gap-0.5" aria-hidden="true">
+            <span
+              v-for="(bar, barIndex) in row[panel.key].bars" :key="barIndex"
+              class="block rounded-full hover:opacity-65"
+              :class="[bar.tone, compact ? 'h-0.5' : 'h-1']"
+              :title="bar.label"
+            />
+          </span>
         </component>
       </div>
     </section>

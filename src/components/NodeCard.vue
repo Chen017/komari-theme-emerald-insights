@@ -31,6 +31,12 @@ const offlineTime = computed(() => formatDateTime(props.node.time))
 const cpuStatus = computed(() => getStatus(props.node.cpu ?? 0))
 const memPercentage = computed(() => getMemPercentage(props.node))
 const memStatus = computed(() => getStatus(memPercentage.value))
+const speedShare = computed(() => {
+  const up = props.node.online && Number.isFinite(props.node.net_out) ? Math.max(props.node.net_out, 0) : 0
+  const down = props.node.online && Number.isFinite(props.node.net_in) ? Math.max(props.node.net_in, 0) : 0
+  const total = up + down
+  return total > 0 ? { up: up / total * 100, down: down / total * 100 } : { up: 0, down: 0 }
+})
 
 const trafficUsedPercentage = computed(() => getTrafficUsedPercentage(props.node))
 const trafficUsed = computed(() => getTrafficUsed(props.node))
@@ -120,12 +126,20 @@ const tagDisplay = computed(() => getNodeTagDisplay(props.node, appStore.lang))
               </svg>
               网速
             </div>
+            <div
+              class="flex h-1 w-full overflow-hidden rounded-full bg-muted-foreground/20"
+              role="img"
+              :aria-label="`实时网速比例：上行 ${speedShare.up.toFixed(1)}%，下行 ${speedShare.down.toFixed(1)}%`"
+            >
+              <div class="h-full bg-emerald-500 transition-[width] duration-300" :style="{ width: `${speedShare.up}%` }" data-speed-up-share />
+              <div class="h-full bg-blue-500 transition-[width] duration-300" :style="{ width: `${speedShare.down}%` }" data-speed-down-share />
+            </div>
             <div class="flex min-w-0 gap-2 whitespace-nowrap text-[11px] leading-4 tabular-nums">
               <div class="flex min-w-0 flex-1 items-center gap-0.5 text-emerald-700 dark:text-emerald-400" aria-label="上行网速">
                 <svg class="size-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 14 6-6 6 6" /></svg>
                 <span class="truncate" :title="props.node.online ? formatBytesPerSecond(props.node.net_out ?? 0) : '离线'">{{ props.node.online ? formatBytesPerSecond(props.node.net_out ?? 0) : '—' }}</span>
               </div>
-              <div class="flex min-w-0 flex-1 items-center gap-0.5 text-blue-700 dark:text-blue-400" aria-label="下行网速">
+              <div class="flex min-w-0 flex-1 items-center justify-end gap-0.5 text-blue-700 dark:text-blue-400" aria-label="下行网速">
                 <svg class="size-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 10 6 6 6-6" /></svg>
                 <span class="truncate" :title="props.node.online ? formatBytesPerSecond(props.node.net_in ?? 0) : '离线'">{{ props.node.online ? formatBytesPerSecond(props.node.net_in ?? 0) : '—' }}</span>
               </div>
