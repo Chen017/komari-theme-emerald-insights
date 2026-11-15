@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Icon } from '@iconify/vue'
 import { useNodePingDisplay } from '@/composables/useNodePingDisplay'
 
 const props = defineProps<{
@@ -13,8 +12,8 @@ const emit = defineEmits<{
 
 const rows = useNodePingDisplay(() => props.uuid)
 const panels = [
-  { key: 'latency', label: '延迟', icon: 'lucide:activity' },
-  { key: 'loss', label: '丢包', icon: 'lucide:signal' },
+  { key: 'latency', label: '延迟' },
+  { key: 'loss', label: '丢包' },
 ] as const
 </script>
 
@@ -27,10 +26,6 @@ const panels = [
       :data-ping-panel="panel.key"
       :aria-label="panel.label"
     >
-      <div class="flex items-center gap-1 px-0.5 text-xs font-medium text-muted-foreground" :class="!compact && 'mb-1'">
-        <Icon :icon="panel.icon" class="size-3 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
-        {{ panel.label }}
-      </div>
       <div class="grid" :class="compact ? 'gap-0.5' : 'gap-1'">
         <component
           :is="row.id === undefined ? 'div' : 'button'"
@@ -52,14 +47,6 @@ const panels = [
               <span class="truncate">{{ row.name }}</span>
             </span>
             <span class="shrink-0 whitespace-nowrap font-medium tabular-nums">{{ row[panel.key].value }}</span>
-          </span>
-          <span class="grid grid-cols-10 gap-0.5" aria-hidden="true">
-            <span
-              v-for="(bar, barIndex) in row[panel.key].bars" :key="barIndex"
-              class="block rounded-full hover:opacity-65"
-              :class="[bar.tone, compact ? 'h-0.5' : 'h-1']"
-              :title="bar.label"
-            />
           </span>
         </component>
       </div>

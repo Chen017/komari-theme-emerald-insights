@@ -120,12 +120,12 @@ const tagDisplay = computed(() => getNodeTagDisplay(props.node, appStore.lang))
               </svg>
               网速
             </div>
-            <div class="space-y-0 text-[11px] leading-4 tabular-nums">
-              <div class="flex min-w-0 items-center gap-1 text-emerald-700 dark:text-emerald-400" aria-label="上行网速">
+            <div class="flex min-w-0 gap-2 whitespace-nowrap text-[11px] leading-4 tabular-nums">
+              <div class="flex min-w-0 flex-1 items-center gap-0.5 text-emerald-700 dark:text-emerald-400" aria-label="上行网速">
                 <svg class="size-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 14 6-6 6 6" /></svg>
                 <span class="truncate" :title="props.node.online ? formatBytesPerSecond(props.node.net_out ?? 0) : '离线'">{{ props.node.online ? formatBytesPerSecond(props.node.net_out ?? 0) : '—' }}</span>
               </div>
-              <div class="flex min-w-0 items-center gap-1 text-blue-700 dark:text-blue-400" aria-label="下行网速">
+              <div class="flex min-w-0 flex-1 items-center gap-0.5 text-blue-700 dark:text-blue-400" aria-label="下行网速">
                 <svg class="size-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 10 6 6 6-6" /></svg>
                 <span class="truncate" :title="props.node.online ? formatBytesPerSecond(props.node.net_in ?? 0) : '离线'">{{ props.node.online ? formatBytesPerSecond(props.node.net_in ?? 0) : '—' }}</span>
               </div>

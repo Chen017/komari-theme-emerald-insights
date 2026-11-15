@@ -186,8 +186,9 @@ test('homepage ping slots share the configured count and use native task fallbac
   await expect(latency.locator('button').first()).toHaveAccessibleName('Global priority 延迟 — 暂无采样')
   await expect(edgeLatency.locator('button').last()).toHaveAccessibleName('Fallback route 延迟 — 暂无采样')
   await expect(card.getByRole('button', { name: `${pingTask} 丢包 0.0%` })).toBeVisible()
-  const latestSegment = latency.locator('[data-ping-task="1"] .rounded-full').last()
-  expect(await latestSegment.evaluate(segment => Number.parseFloat(getComputedStyle(segment).borderTopLeftRadius))).toBeGreaterThan(1)
+  await expect(latency.getByText('延迟', { exact: true })).toHaveCount(0)
+  await expect(card.getByRole('region', { name: '丢包' }).getByText('丢包', { exact: true })).toHaveCount(0)
+  await expect(latency.locator('.grid-cols-10')).toHaveCount(0)
   await expect(card.getByText(/¥\s*39|在线\s*8\s*天/)).toHaveCount(0)
   expect(await card.evaluate(element => element.offsetHeight)).toBe(await edge.evaluate(element => element.offsetHeight))
 
@@ -219,12 +220,28 @@ test('homepage shows remaining summary cards and centers the traffic reset label
   await page.goto('/')
   const card = page.locator('.node-card').filter({ hasText: node.name })
   await expect(card).toBeVisible()
-  for (const label of ['内存用量', '硬盘用量', '累计流量', '剩余价值', '实时上行', '实时下行'])
+  for (const label of ['实时上行', '实时下行', '累计流量', '月均成本', '年均成本', '剩余价值'])
     await expect(page.getByText(label, { exact: true }).first()).toBeVisible()
+  const monthly = page.getByText('月均成本', { exact: true }).locator('xpath=ancestor::div[contains(concat(" ", normalize-space(@class), " "), " group ")][1]')
+  const annual = page.getByText('年均成本', { exact: true }).locator('xpath=ancestor::div[contains(concat(" ", normalize-space(@class), " "), " group ")][1]')
+  await expect(monthly).toContainText('¥3.21')
+  await expect(annual).toContainText('¥38.47')
   const reset = card.getByText(/流量重置日：10/).locator('..')
   await expect(reset).toBeVisible()
   for (const width of [1280, 360]) {
     await page.setViewportSize({ width, height: 900 })
+    const labels = ['实时上行', '实时下行', '累计流量', '月均成本', '年均成本', '剩余价值']
+    const boundsByLabel = await Promise.all(labels.map(label => page.getByText(label, { exact: true }).first().boundingBox()))
+    expect(boundsByLabel.every(Boolean)).toBe(true)
+    expect(boundsByLabel[0]!.y).toBe(boundsByLabel[1]!.y)
+    expect(boundsByLabel[1]!.y).toBe(boundsByLabel[2]!.y)
+    expect(boundsByLabel[3]!.y).toBe(boundsByLabel[4]!.y)
+    expect(boundsByLabel[4]!.y).toBe(boundsByLabel[5]!.y)
+    expect(boundsByLabel[3]!.y).toBeGreaterThan(boundsByLabel[0]!.y)
+    for (const offset of [0, 3]) {
+      expect(boundsByLabel[offset + 1]!.x).toBeGreaterThan(boundsByLabel[offset]!.x)
+      expect(boundsByLabel[offset + 2]!.x).toBeGreaterThan(boundsByLabel[offset + 1]!.x)
+    }
     const bounds = await reset.boundingBox()
     const parent = await reset.locator('..').boundingBox()
     expect(bounds).not.toBeNull()
@@ -238,7 +255,7 @@ test('globe and map show six compact summary cards in two rows', async ({ page, 
   for (const mode of ['earth', 'maps']) {
     await mockKomari(page, baseURL!, 404, true, 3, mode)
     await page.goto('/')
-    const labels = ['内存用量', '剩余价值', '实时上行', '硬盘用量', '累计流量', '实时下行']
+    const labels = ['实时上行', '实时下行', '累计流量', '月均成本', '年均成本', '剩余价值']
     const cards = labels.map(label => page.getByText(label, { exact: true }).first().locator('xpath=ancestor::div[contains(concat(" ", normalize-space(@class), " "), " group ")][1]'))
     for (const card of cards)
       await expect(card).toBeVisible()
@@ -254,6 +271,8 @@ test('globe and map show six compact summary cards in two rows', async ({ page, 
         const expectedHeight = (gridBounds!.height - gap) / 2
         expect(Math.abs(bounds!.height - expectedHeight)).toBeLessThan(1)
         expect(Math.abs(bounds!.y - gridBounds!.y - (index < 3 ? 0 : expectedHeight + gap))).toBeLessThan(1)
+        const expectedLeft = gridBounds!.x + (index % 3) * (gridBounds!.width + gap) / 3
+        expect(Math.abs(bounds!.x - expectedLeft)).toBeLessThan(1)
       }
     }
     await page.unrouteAll({ behavior: 'wait' })
@@ -277,6 +296,12 @@ test('node cards show upload and download speed in place of disk and keep offlin
   for (const width of [1280, 360]) {
     await page.setViewportSize({ width, height: 900 })
     expect(await card.evaluate(element => element.scrollWidth)).toBeLessThanOrEqual(await card.evaluate(element => element.clientWidth))
+    const up = await card.getByLabel('上行网速').boundingBox()
+    const down = await card.getByLabel('下行网速').boundingBox()
+    expect(up).not.toBeNull()
+    expect(down).not.toBeNull()
+    expect(Math.abs(up!.y - down!.y)).toBeLessThan(1)
+    expect(down!.x).toBeGreaterThan(up!.x)
     await expect(card.getByRole('region', { name: '延迟' })).toBeVisible()
   }
 })
