@@ -4,8 +4,6 @@ import type { NodeData } from '@/stores/nodes'
 import { usePreferredReducedMotion } from '@vueuse/core'
 import { computed, onMounted, ref } from 'vue'
 import VChart from 'vue-echarts'
-import { Empty } from '@/components/ui/empty'
-import { Spinner } from '@/components/ui/spinner'
 import { useAppStore } from '@/stores/app'
 import { useNodesStore } from '@/stores/nodes'
 import { ensureWorldMapRegistered } from '@/utils/echartsWorldMap'
@@ -25,14 +23,16 @@ interface EarthMapPoint {
 const props = defineProps<{
   nodes?: NodeData[]
 }>()
+const emit = defineEmits<{
+  ready: []
+  unavailable: []
+}>()
 
 const appStore = useAppStore()
 const reducedMotion = usePreferredReducedMotion()
 const nodesStore = useNodesStore()
 const displayNodes = computed(() => props.nodes ?? nodesStore.earthNodes)
 const mapName = ref<string>()
-const loading = ref(true)
-const loadError = ref<string | null>(null)
 
 const regionDisplayNames = typeof Intl.DisplayNames === 'function'
   ? new Intl.DisplayNames(['zh-Hans'], { type: 'region' })
@@ -235,17 +235,11 @@ const chartOption = computed<EChartsOption>(() => ({
 }))
 
 onMounted(async () => {
-  loading.value = true
-  loadError.value = null
-
   try {
     mapName.value = await ensureWorldMapRegistered()
   }
-  catch (error) {
-    loadError.value = error instanceof Error ? error.message : '地图资源加载失败'
-  }
-  finally {
-    loading.value = false
+  catch {
+    emit('unavailable')
   }
 })
 </script>
@@ -256,7 +250,7 @@ onMounted(async () => {
     <div class="hidden">
       <img v-for="point in points" :key="point.code" :src="`/assets/flags/${point.code}.svg`">
     </div>
-    <div class="relative flex h-88 flex-col items-center">
+    <div class="relative flex h-full flex-col items-center">
       <div
         v-if="totalServers > 0"
         class="absolute top-0 right-0 z-2 text-[10px] text-muted-foreground pointer-events-none flex gap-2 items-center backdrop-blur-lg bg-background/60 rounded px-2 py-0.5"
@@ -272,19 +266,13 @@ onMounted(async () => {
       </div>
 
       <div class="relative flex-1 w-full md:-translate-y-1/6 -translate-y-1/5">
-        <Spinner :show="loading" class="h-full w-full" content-class="!bg-transparent">
-          <VChart
-            v-if="mapName"
-            :option="chartOption"
-            autoresize
-            class="h-full w-full"
-          />
-          <Empty
-            v-else-if="loadError"
-            description="地图资源加载失败"
-            class="h-full"
-          />
-        </Spinner>
+        <VChart
+          v-if="mapName"
+          :option="chartOption"
+          autoresize
+          class="h-full w-full"
+          @rendered.once="emit('ready')"
+        />
       </div>
     </div>
   </div>

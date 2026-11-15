@@ -44,7 +44,7 @@ function pingTrigger(page: Page, index = 0, panel = 'latency') {
   return page.locator('.node-card').nth(index).locator(`[data-ping-panel="${panel}"] [data-ping-task="1"]`)
 }
 
-test('the startup skeleton fades over ready content without blocking it', async ({ page, baseURL }) => {
+test('the startup status fades over ready content without blocking it', async ({ page, baseURL }) => {
   await setup(page, baseURL!)
   await page.emulateMedia({ colorScheme: 'dark', reducedMotion: 'no-preference' })
   const health = Promise.withResolvers<void>()
@@ -57,8 +57,8 @@ test('the startup skeleton fades over ready content without blocking it', async 
 
   try {
     await page.goto('/')
-    const skeleton = page.getByText('正在连接监控服务…', { exact: true })
-    await expect(skeleton).toBeVisible()
+    const status = page.getByText('正在加载监控面板…', { exact: true })
+    await expect(status).toBeVisible()
     await expect(page.getByRole('main')).toHaveAttribute('aria-busy', 'true')
     health.resolve()
 
@@ -67,7 +67,7 @@ test('the startup skeleton fades over ready content without blocking it', async 
     await expect(page.locator('html')).toHaveAttribute('data-startup-overlap', 'true')
     await expect(page.getByRole('main')).toHaveAttribute('aria-busy', 'false')
     await expect(page.getByRole('link', { name: node.name })).toBeVisible()
-    await expect(skeleton).toHaveCount(0)
+    await expect(status).toHaveCount(0)
 
     const startupMotion = await motion(page, 'startupMotion')
     await page.getByRole('button', { name: '资源概览', exact: true }).click()
@@ -78,6 +78,40 @@ test('the startup skeleton fades over ready content without blocking it', async 
     health.resolve()
   }
 })
+
+test('the footer links to the Emerald Insights repository', async ({ page, baseURL }) => {
+  await setup(page, baseURL!)
+  await page.goto('/')
+  await expect(page.getByRole('link', { name: 'Komari Emerald', exact: true }))
+    .toHaveAttribute('href', 'https://github.com/Chen017/komari-theme-emerald-insights')
+  await expect(page.getByRole('link', { name: 'Komari Monitor', exact: true }))
+    .toHaveAttribute('href', 'https://github.com/komari-monitor/komari')
+})
+
+for (const colorScheme of ['light', 'dark'] as const) {
+  test(`the scrolled navigation remains translucent and blurred in ${colorScheme}`, async ({ page, baseURL }) => {
+    await setup(page, baseURL!)
+    await page.emulateMedia({ colorScheme })
+    await page.setViewportSize({ width: 390, height: 400 })
+    await page.goto('/')
+    await expect(page.getByRole('link', { name: node.name })).toBeVisible()
+    const header = page.locator('.sticky').filter({ has: page.getByRole('link', { name: /Komari Browser Test/ }) })
+    await expect(header).toHaveCSS('backdrop-filter', 'none')
+
+    await page.evaluate(() => window.scrollTo(0, 160))
+    await expect(header).toHaveCSS('backdrop-filter', 'blur(14px)')
+    await expect.poll(() => header.evaluate((element) => {
+      const context = document.createElement('canvas').getContext('2d')!
+      context.fillStyle = getComputedStyle(element).backgroundColor
+      context.fillRect(0, 0, 1, 1)
+      return context.getImageData(0, 0, 1, 1).data[3]
+    })).toBe(Math.round(0.62 * 255))
+    expect((await header.boundingBox())!.y).toBeCloseTo(0, 0)
+
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await expect(header).toHaveCSS('backdrop-filter', 'none')
+  })
+}
 
 for (const colorScheme of ['light', 'dark'] as const) {
   test(`legacy announcement, filing and media settings are ignored in ${colorScheme}`, async ({ page, baseURL }) => {

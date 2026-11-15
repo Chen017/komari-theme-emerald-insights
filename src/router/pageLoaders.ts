@@ -2,10 +2,13 @@ export function loadNodeCard() {
   return import('@/components/NodeCard.vue')
 }
 
-export function loadHome() {
-  // Start the first card module alongside the route module and the node snapshot.
-  void loadNodeCard().catch(() => {})
-  return import('@/views/HomeView.vue')
+export async function loadHome() {
+  // Keep the startup status visible while the first card module arrives.
+  const [home] = await Promise.all([
+    import('@/views/HomeView.vue'),
+    loadNodeCard().catch(() => {}),
+  ])
+  return home
 }
 
 export function loadNodeDetail() {

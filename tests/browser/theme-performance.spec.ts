@@ -35,7 +35,7 @@ test('first cards and hidden admin policy are independent of a delayed login req
   try {
     await page.goto('/')
     await settingsRequested
-    await expect(page.getByText('正在连接监控服务…')).toBeVisible()
+    await expect(page.getByText('正在加载监控面板…')).toBeVisible()
     expect(calls.some(call => call.method === 'common:getNodes')).toBe(false)
 
     health.resolve()
@@ -71,7 +71,7 @@ test('startup failure exposes the RPC error and releases the page placeholder', 
   await page.route('**/api/rpc2', route => route.fulfill({ status: 503 }))
   await page.goto('/')
   await expect(page.getByText('RPC 服务错误')).toBeVisible()
-  await expect(page.getByText('正在连接监控服务…')).toHaveCount(0)
+  await expect(page.getByText('正在加载监控面板…')).toHaveCount(0)
   await expect(page.getByRole('link', { name: node.name })).toHaveCount(0)
 })
 
@@ -113,7 +113,7 @@ test('homepage starts the first node module during the initial data fetch', asyn
   try {
     await page.goto('/')
     await cardModule
-    await expect(page.getByText('正在连接监控服务…')).toBeVisible()
+    await expect(page.getByText('正在加载监控面板…')).toBeVisible()
     nodes.resolve()
     await expect(page.getByRole('link', { name: node.name })).toBeVisible()
   }

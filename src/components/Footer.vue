@@ -53,7 +53,7 @@ const formattedServerVersion = computed(() => serverVersion.value?.version ?? nu
           :content="`v${buildVersion}\n${buildGitHash}`"
         >
           <a
-            href="https://github.com/Tokinx/komari-theme-emerald" target="_blank" rel="noopener noreferrer"
+            href="https://github.com/Chen017/komari-theme-emerald-insights" target="_blank" rel="noopener noreferrer"
             class="transition-opacity hover:opacity-80"
           >
             <span class="font-medium text-foreground">Komari Emerald</span>

@@ -2,8 +2,8 @@
 import type { NodeData } from '@/stores/nodes'
 import type { CurrencyCode } from '@/utils/financeHelper'
 import { Icon } from '@iconify/vue'
-import { computed, defineAsyncComponent, onMounted, ref } from 'vue'
-import NodeEarthGlobe from '@/components/NodeEarthGlobe.vue'
+import { computed, onMounted, ref } from 'vue'
+import HomeNodeVisual from '@/components/HomeNodeVisual.vue'
 import { CardX } from '@/components/ui/card-x'
 import { DataTooltip } from '@/components/ui/data-tooltip'
 import { useAppStore } from '@/stores/app'
@@ -16,8 +16,6 @@ const props = defineProps<{
   globeNodes?: NodeData[]
   transitionKey?: string
 }>()
-
-const NodeEarthMaps = defineAsyncComponent(() => import('@/components/NodeEarthMaps.vue'))
 
 const appStore = useAppStore()
 const nodesStore = useNodesStore()
@@ -147,8 +145,13 @@ onMounted(async () => {
 
 <template>
   <div :class="wrapperClass">
-    <NodeEarthGlobe v-if="showEarth" :nodes="globeNodes" class="col-span-12 col-start-1 md:col-span-6 md:col-start-7" />
-    <NodeEarthMaps v-else-if="showMaps" :nodes="globeNodes" class="col-span-12 col-start-1 md:col-span-6 md:col-start-7" />
+    <HomeNodeVisual
+      v-if="showVisualPanel"
+      :key="showEarth ? 'earth' : 'maps'"
+      :mode="showEarth ? 'earth' : 'maps'"
+      :nodes="globeNodes"
+      class="col-span-12 col-start-1 md:col-span-6 md:col-start-7"
+    />
 
     <div :class="cardGridClass">
       <CardX

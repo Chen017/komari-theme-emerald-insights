@@ -20,6 +20,10 @@ import { formatBytesPerSecondSplit } from '@/utils/helper'
 const props = defineProps<{
   nodes?: NodeData[]
 }>()
+const emit = defineEmits<{
+  ready: []
+  unavailable: []
+}>()
 
 const appStore = useAppStore()
 const nodesStore = useNodesStore()
@@ -369,21 +373,42 @@ function syncRafState() {
 }
 
 function startGlobe() {
-  if (!canvasRef.value)
+  const canvas = canvasRef.value
+  if (!canvas)
     return
   if (appStore.earthViewMode === 'earth-stop') {
     resetStoppedView()
     triggerStaticRedrawWindow()
   }
-  globe = createGlobe(canvasRef.value, buildInitialOptions())
+  try {
+    globe = createGlobe(canvas, buildInitialOptions())
+    // COBE returns a no-op renderer when neither WebGL context is available.
+    if (!canvas.getContext('webgl2') && !canvas.getContext('webgl')) {
+      markUnavailable()
+      return
+    }
+  }
+  catch {
+    markUnavailable()
+    return
+  }
   syncClusterOverlayPositions()
   // 静止地球没有自转帧，首帧需要在实际尺寸稳定后主动重绘一次。
+  const started = globe
   requestAnimationFrame(() => {
+    if (globe !== started)
+      return
     updateGlobeFrame()
+    emit('ready')
   })
   // documentVisibility 同步可读；useElementVisibility 需等 IntersectionObserver 首回调
   // 先按"前台"启动，若实际不可见，shouldRender 的 watch 会在下一帧 pause
   syncRafState()
+}
+
+function markUnavailable() {
+  stopGlobe()
+  emit('unavailable')
 }
 
 // cobe 不会清理自己创建的 wrapper，这里手动收尾。
@@ -509,11 +534,12 @@ function formatRate(bytesPerSec: number): string {
 </script>
 
 <template>
-  <div ref="containerRef" class="relative aspect-square w-full max-w-md mx-auto -translate-y-[57px] md:-translate-y-[81px]">
+  <div ref="containerRef" class="relative h-full w-full">
     <canvas
       ref="canvasRef"
       class="earth-globe-canvas absolute inset-0 w-full h-full select-none touch-none cursor-grab active:cursor-grabbing"
       @pointerdown="onPointerDown" @pointermove="onPointerMove" @pointerup="onPointerUp" @pointercancel="onPointerUp"
+      @webglcontextlost="markUnavailable"
     />
 
     <template v-for="cluster in regionClusters" :key="cluster.code">

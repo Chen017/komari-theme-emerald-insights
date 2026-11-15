@@ -40,7 +40,7 @@ When you need a new piece of UI:
 - `HomeView.vue` coordinates search, grouping, view-mode selection, scroll restore, and route navigation.
 - `InstanceDetail.vue` coordinates node detail presentation and chart tabs for a selected node.
 - Keep `HomeView` named with `defineOptions({ name: 'HomeView' })` so `App.vue`'s `KeepAlive :include="['HomeView']"` keeps working.
-- Heavy node and chart UI must stay lazily loaded with `defineAsyncComponent`, as already done for `NodeCard`, `NodeGeneralCards`, `NodeList`, `LoadChart`, and `PingChart`.
+- Heavy node and chart UI stays lazily loaded with `defineAsyncComponent`. The lazy home route includes its summary layout so node cards start at their final position. Import the globe and map renderers separately inside that layout.
 
 ## Stores
 

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { NodeData } from '@/stores/nodes'
-import { computed, defineAsyncComponent, onDeactivated, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, h, onDeactivated, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import NodeGeneralCards from '@/components/NodeGeneralCards.vue'
 import PingChartPlaceholder from '@/components/PingChartPlaceholder.vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -14,8 +15,10 @@ import { isNodeInGroup } from '@/utils/groupHelper'
 
 defineOptions({ name: 'HomeView' })
 
-const NodeCard = defineAsyncComponent(loadNodeCard)
-const NodeGeneralCards = defineAsyncComponent(() => import('@/components/NodeGeneralCards.vue'))
+const NodeCard = defineAsyncComponent({
+  loader: loadNodeCard,
+  errorComponent: () => h(Empty, { description: '节点卡片加载失败，请刷新页面重试。' }),
+})
 const PingChart = defineAsyncComponent({
   loader: () => import('@/components/PingChart.vue'),
   loadingComponent: PingChartPlaceholder,
