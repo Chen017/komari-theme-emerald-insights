@@ -260,8 +260,7 @@ function getRowTransitionStyle(index: number): Record<string, string> {
                       {{ (node.cpu ?? 0).toFixed(1) }}%
                     </span>
                     <span class="hidden group-hover:inline">
-                      {{ node.load.toFixed(2) ?? 0 }}, {{ node.load5.toFixed(2) ?? 0 }}, {{ node.load15.toFixed(2) ?? 0
-                      }}
+                      {{ node.load?.toFixed(2) ?? '—' }}, {{ node.load5?.toFixed(2) ?? '—' }}, {{ node.load15?.toFixed(2) ?? '—' }}
                     </span>
                   </div>
                   <ProgressThin :percentage="node.cpu ?? 0" :status="getStatus(node.cpu ?? 0)" :height="4" />
