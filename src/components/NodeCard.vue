@@ -14,7 +14,6 @@ import { formatDateTime, getStatus } from '@/utils/helper'
 import { getDiskPercentage, getMemPercentage, getNodeTagDisplay, getTrafficUsed, getTrafficUsedPercentage, hasRegion, showTrafficProgress } from '@/utils/nodeHelpers'
 import { getOSImage, getOSName } from '@/utils/osImageHelper'
 import { getFlagSrc, getRegionDisplayName } from '@/utils/regionHelper'
-import { getExpireStatus, getExpireText, getExpireTextClass } from '@/utils/tagHelper'
 
 const props = defineProps<{ node: NodeData }>()
 
@@ -28,18 +27,6 @@ const { pickSurfaceClass } = useBackgroundSurface()
 const { formatBytes, formatBytesPerSecond } = useNodeFormatters()
 
 const offlineTime = computed(() => formatDateTime(props.node.time))
-const renewal = computed(() => {
-  const expiry = props.node.expired_at
-  if (!(new Date(expiry).getUTCFullYear() > 1))
-    return null
-
-  const status = getExpireStatus(expiry)
-  const text = getExpireText(expiry, appStore.lang)
-  const remaining = status === 'expired' || status === 'long_term'
-    ? text
-    : appStore.lang === 'zh-CN' ? `剩余 ${text}` : `${text} left`
-  return { remaining, date: formatDateTime(expiry, 'YYYY-MM-DD'), tone: getExpireTextClass(expiry) }
-})
 
 const cpuStatus = computed(() => getStatus(props.node.cpu ?? 0))
 const memPercentage = computed(() => getMemPercentage(props.node))
@@ -166,7 +153,7 @@ const tagDisplay = computed(() => getNodeTagDisplay(props.node, appStore.lang))
             <span>{{ offlineTime }}</span>
           </div>
           <div
-            class="grid grid-cols-3 gap-1.5 text-[11px] tabular-nums"
+            class="grid grid-cols-2 gap-1.5 text-[11px] tabular-nums"
             :class="!props.node.online && 'pointer-events-none blur-xs opacity-60'"
             :aria-hidden="!props.node.online || undefined"
           >
@@ -190,15 +177,6 @@ const tagDisplay = computed(() => getNodeTagDisplay(props.node, appStore.lang))
                 <span class="truncate" :title="formatBytes(props.node.net_total_down ?? 0)">{{ formatBytes(props.node.net_total_down ?? 0) }}</span>
               </div>
             </div>
-            <div class="min-w-0 space-y-0.5 rounded-lg bg-muted/65 px-1.5 py-1.5 dark:bg-muted/55 sm:px-2" aria-label="续费信息">
-              <div class="flex items-center gap-0.5 whitespace-nowrap" :class="renewal?.tone">
-                <Icon icon="lucide:calendar-clock" class="size-3 shrink-0 text-muted-foreground" aria-hidden="true" />
-                <span class="truncate" :title="renewal?.remaining">{{ renewal?.remaining ?? '未设到期' }}</span>
-              </div>
-              <div class="truncate whitespace-nowrap pl-3.5 text-muted-foreground" :title="renewal?.date">
-                {{ renewal?.date ?? '—' }}
-              </div>
-            </div>
           </div>
         </div>
 
@@ -214,11 +192,11 @@ const tagDisplay = computed(() => getNodeTagDisplay(props.node, appStore.lang))
           <Badge
             v-if="tagDisplay.trafficResetTag"
             variant="outline"
-            class="!text-[11px] rounded bg-emerald-500/5 text-emerald-700 dark:text-emerald-400 border-emerald-500/20 px-1.5 inline-flex items-center gap-1"
+            class="!text-[11px] h-auto max-w-full min-w-0 shrink whitespace-normal break-all rounded bg-emerald-500/5 text-emerald-700 dark:text-emerald-400 border-emerald-500/20 px-1.5 inline-flex items-start justify-start gap-1"
             :title="tagDisplay.trafficResetTooltip || undefined"
           >
             <Icon icon="lucide:calendar-clock" class="size-3 shrink-0" />
-            <span>{{ tagDisplay.trafficResetTag }}</span>
+            <span class="min-w-0">{{ tagDisplay.trafficResetTag }}</span>
           </Badge>
         </div>
       </div>
