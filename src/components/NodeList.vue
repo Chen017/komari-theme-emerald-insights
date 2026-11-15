@@ -7,7 +7,6 @@ import TrafficProgress from '@/components/TrafficProgress.vue'
 import { Badge } from '@/components/ui/badge'
 import { DataTooltip } from '@/components/ui/data-tooltip'
 import { ProgressThin } from '@/components/ui/progress-thin'
-import { useBackgroundSurface } from '@/composables/useBackgroundSurface'
 import { useNodeFormatters } from '@/composables/useNodeFormatters'
 import { useAppStore } from '@/stores/app'
 import { formatDateTime, getStatus } from '@/utils/helper'
@@ -36,7 +35,6 @@ const rowStaggerMs = 35
 const rowStaggerLimit = 12
 
 const appStore = useAppStore()
-const { pickSurfaceClass } = useBackgroundSurface()
 const { formatBytes, formatBytesPerSecond, formatUptime } = useNodeFormatters()
 
 const columns: ColumnConfig[] = [
@@ -142,8 +140,7 @@ function getRowTransitionStyle(index: number): Record<string, string> {
     <div class="min-w-fit w-full flex flex-col gap-1">
       <!-- 表头 -->
       <div
-        class="grid gap-2 rounded-lg p-2"
-        :class="pickSurfaceClass('bg-background/60 hover:bg-background', 'bg-background/60 backdrop-blur-sm')"
+        class="grid gap-2 rounded-lg p-2 bg-background/60 hover:bg-background"
         :style="gridStyle"
       >
         <div
@@ -158,8 +155,6 @@ function getRowTransitionStyle(index: number): Record<string, string> {
       </div>
 
       <TransitionGroup
-        :appear="!appStore.disablePageAnimation"
-        :css="!appStore.disablePageAnimation"
         name="node-row-switch"
         tag="div"
         class="flex flex-col gap-1"
@@ -168,7 +163,7 @@ function getRowTransitionStyle(index: number): Record<string, string> {
           v-for="(node, index) in sortedNodes"
           :key="getRowTransitionKey(node)"
           class="relative flex min-h-16 cursor-pointer flex-col justify-center rounded-lg px-2 py-1 shadow-[0_0_4px,0_0_0_1px] shadow-transparent transition-all bg-background/60 hover:bg-background hover:shadow-emerald-600/10"
-          :class="[pickSurfaceClass('', 'backdrop-blur-sm'), !node.online && '!shadow-red-600/10']"
+          :class="[!node.online && '!shadow-red-600/10']"
           :style="getRowTransitionStyle(index)"
           @click="handleClick(node)"
         >
@@ -221,7 +216,7 @@ function getRowTransitionStyle(index: number): Record<string, string> {
 
               <!-- 标签 -->
               <div v-else-if="col.key === 'tags'">
-                <div v-for="(tagDisplay, index) in [getNodeTagDisplay(node, appStore.lang)]" :key="index" class="flex flex-wrap gap-1 items-center">
+                <div v-for="(tagDisplay, displayIndex) in [getNodeTagDisplay(node, appStore.lang)]" :key="displayIndex" class="flex flex-wrap gap-1 items-center">
                   <Badge
                     v-for="(tag, tagIndex) in tagDisplay.customTags" :key="tagIndex" variant="outline"
                     class="!text-[11px] rounded text-muted-foreground border-muted-foreground/10 px-1.5"
@@ -386,8 +381,7 @@ function getRowTransitionStyle(index: number): Record<string, string> {
 .node-row-switch-leave-active {
   transition:
     opacity 170ms ease,
-    transform 210ms cubic-bezier(0.22, 1, 0.36, 1),
-    filter 170ms ease;
+    transform 160ms var(--motion-ease);
 }
 
 .node-row-switch-enter-active {
@@ -401,13 +395,11 @@ function getRowTransitionStyle(index: number): Record<string, string> {
 .node-row-switch-enter-from {
   opacity: 0;
   transform: translateY(8px);
-  filter: blur(3px);
 }
 
 .node-row-switch-leave-to {
   opacity: 0;
   transform: translateY(-5px);
-  filter: blur(2px);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -422,7 +414,6 @@ function getRowTransitionStyle(index: number): Record<string, string> {
   .node-row-switch-leave-to {
     opacity: 1;
     transform: none;
-    filter: none;
   }
 }
 </style>

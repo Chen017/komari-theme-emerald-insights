@@ -1,17 +1,15 @@
 <script setup lang="ts">
 import { Icon } from '@iconify/vue'
-import { defineAsyncComponent, ref } from 'vue'
+import { ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useNodesStore } from '@/stores/nodes'
 import { refreshAllNodes } from '@/utils/init'
 import Availability30dCard from '../availability/Availability30dCard.vue'
 import CostSummaryCard from '../components/CostSummaryCard.vue'
 import IpqaOverviewSection from '../components/IpqaOverviewSection.vue'
+import TrafficTrendCard from '../traffic/TrafficTrendCard.vue'
 
 defineOptions({ name: 'ResourceInsightsPage' })
-
-// The page heading and other cards must not wait for the chart engine.
-const TrafficTrendCard = defineAsyncComponent(() => import('../traffic/TrafficTrendCard.vue'))
 
 const nodesStore = useNodesStore()
 
@@ -69,7 +67,7 @@ async function handleRefreshAll() {
       <div class="flex items-center gap-2 self-start sm:self-end">
         <button
           type="button"
-          class="inline-flex items-center gap-2 rounded-xl border border-neutral-200/80 dark:border-neutral-800/80 bg-white/80 dark:bg-neutral-900/80 backdrop-blur px-3.5 py-2 text-xs font-medium text-neutral-700 dark:text-neutral-300 shadow-xs hover:bg-neutral-50 dark:hover:bg-neutral-800/60 transition-colors disabled:opacity-50 cursor-pointer"
+          class="inline-flex items-center gap-2 rounded-xl border border-neutral-200/80 dark:border-neutral-800/80 bg-white/90 dark:bg-neutral-900/90 px-3.5 py-2 text-xs font-medium text-neutral-700 dark:text-neutral-300 shadow-xs hover:bg-neutral-50 dark:hover:bg-neutral-800/60 transition-colors disabled:opacity-50 cursor-pointer"
           :disabled="refreshing"
           title="刷新全部概览数据"
           @click="handleRefreshAll"
@@ -87,15 +85,6 @@ async function handleRefreshAll() {
     <!-- Top Grid: Traffic Trends (left) + 30-day Uptime (right) -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
       <div class="lg:col-span-7">
-        <div v-if="!trafficCardRef" role="status" aria-live="polite" class="min-h-96 rounded-2xl border border-neutral-200/80 bg-white/80 p-5 dark:border-neutral-800/80 dark:bg-neutral-900/80">
-          <h2 class="font-semibold text-neutral-800 dark:text-neutral-100">
-            每日流量趋势
-          </h2>
-          <p class="mt-3 text-xs text-neutral-500 dark:text-neutral-400">
-            正在加载流量图表…
-          </p>
-          <div aria-hidden="true" class="mt-6 h-56 animate-pulse rounded-xl bg-neutral-100 dark:bg-neutral-800/60" />
-        </div>
         <TrafficTrendCard ref="trafficCardRef" :nodes="nodesStore.nodes" :loading="refreshing" />
       </div>
       <div class="lg:col-span-5">

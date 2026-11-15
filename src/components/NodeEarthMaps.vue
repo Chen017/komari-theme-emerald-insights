@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { EChartsOption } from 'echarts/types/dist/shared'
 import type { NodeData } from '@/stores/nodes'
+import { usePreferredReducedMotion } from '@vueuse/core'
 import { computed, onMounted, ref } from 'vue'
 import VChart from 'vue-echarts'
 import { Empty } from '@/components/ui/empty'
@@ -26,6 +27,7 @@ const props = defineProps<{
 }>()
 
 const appStore = useAppStore()
+const reducedMotion = usePreferredReducedMotion()
 const nodesStore = useNodesStore()
 const displayNodes = computed(() => props.nodes ?? nodesStore.earthNodes)
 const mapName = ref<string>()
@@ -133,7 +135,8 @@ const scatterData = computed(() => points.value.map(point => ({
 })))
 
 const chartOption = computed<EChartsOption>(() => ({
-  animationDurationUpdate: 300,
+  animation: reducedMotion.value !== 'reduce',
+  animationDurationUpdate: 160,
   animationEasingUpdate: 'cubicOut',
   tooltip: {
     trigger: 'item',

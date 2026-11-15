@@ -64,7 +64,7 @@ function handleDateChange(val: any) {
             <SelectContent
               position="popper"
               :side-offset="6"
-              class="z-50 min-w-[160px] max-w-[240px] overflow-hidden rounded-lg border border-border/70 bg-popover/95 p-1 text-foreground shadow-lg backdrop-blur-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2"
+              class="z-50 min-w-[160px] max-w-[240px] overflow-hidden rounded-lg border border-border/70 bg-popover/95 p-1 text-foreground shadow-lg backdrop-blur-sm select-motion"
             >
               <SelectViewport class="p-0.5 max-h-64 overflow-y-auto w-full">
                 <SelectItem
@@ -96,7 +96,7 @@ function handleDateChange(val: any) {
     <div class="flex items-center gap-1 p-1 bg-neutral-100 dark:bg-neutral-800/80 rounded-xl">
       <button
         type="button"
-        class="px-3 py-1 rounded-lg text-xs font-medium transition-all"
+        class="px-3 py-1 rounded-lg text-xs font-medium transition-colors"
         :class="activeIpVersion === 'IPv4' ? 'bg-white dark:bg-neutral-700 text-neutral-800 dark:text-neutral-100 shadow-xs' : 'text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'"
         :disabled="!hasV4"
         @click="$emit('update:ipVersion', 'IPv4')"
@@ -106,7 +106,7 @@ function handleDateChange(val: any) {
       </button>
       <button
         type="button"
-        class="px-3 py-1 rounded-lg text-xs font-medium transition-all"
+        class="px-3 py-1 rounded-lg text-xs font-medium transition-colors"
         :class="activeIpVersion === 'IPv6' ? 'bg-white dark:bg-neutral-700 text-neutral-800 dark:text-neutral-100 shadow-xs' : 'text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'"
         :disabled="!hasV6"
         @click="$emit('update:ipVersion', 'IPv6')"

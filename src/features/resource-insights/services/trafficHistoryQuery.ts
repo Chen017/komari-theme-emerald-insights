@@ -189,12 +189,15 @@ export async function queryMetricSegment(
   })
 
   const hasUsablePoints = result.series.some((s) => {
-    if (!s.points || s.points.length === 0) return false
+    if (!s.points || s.points.length === 0)
+      return false
     const intervalMs = (s.intervalSeconds ?? 0) * 1000
     return s.points.some((p) => {
-      if (p.value === null || typeof p.value !== 'number') return false
+      if (p.value === null || typeof p.value !== 'number')
+        return false
       const t = Date.parse(p.time)
-      if (!Number.isFinite(t)) return false
+      if (!Number.isFinite(t))
+        return false
       const endT = t + (intervalMs > 0 ? intervalMs : 0)
       return t < segment.endMs && endT > segment.startMs
     })
@@ -213,6 +216,7 @@ export async function queryMetricSegment(
   }
 
   const coarseDatesSet = new Set<string>()
+  const dayWindows = segment.dates.map(date => buildZonedDayWindow(date, timeZone, nowMs))
 
   // Raw interval inspection: inspect metric intervals directly from raw series
   for (const s of result.series) {
@@ -232,13 +236,12 @@ export async function queryMetricSegment(
       if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || startMs >= endMs)
         continue
 
-      for (const date of segment.dates) {
-        const window = buildZonedDayWindow(date, timeZone, nowMs)
+      for (const window of dayWindows) {
         // Check if interval overlaps this requested natural day
         if (startMs < window.effectiveEndMs && endMs > window.startMs) {
           // If interval crosses natural day boundary (not contained within window.startMs and window.endMs), mark as coarse!
           if (startMs < window.startMs || endMs > window.endMs) {
-            coarseDatesSet.add(date)
+            coarseDatesSet.add(window.date)
           }
         }
       }
@@ -289,7 +292,7 @@ async function runWithConcurrency<T, R>(
   fn: (item: T) => Promise<R>,
   signal?: AbortSignal,
 ): Promise<R[]> {
-  const results: R[] = new Array(items.length)
+  const results: R[] = []
   let index = 0
   async function worker() {
     while (index < items.length) {
@@ -299,7 +302,7 @@ async function runWithConcurrency<T, R>(
       results[current] = await fn(items[current]!)
     }
   }
-  const workers = Array.from({ length: Math.min(limit, items.length) }, () => worker())
+  const workers = Array.from({ length: Math.min(limit, items.length) }, worker)
   await Promise.all(workers)
   return results
 }
@@ -445,7 +448,7 @@ export async function resolveTrafficHistory(
 
   // Multi-segment case:
   // Step 1: Query the newest base segment first
-  const newestSegment = baseSegments[baseSegments.length - 1]!
+  const newestSegment = baseSegments.at(-1)!
   requestCount += 1
   const newestRes = await queryMetricSegment({
     gateway: options.gateway,

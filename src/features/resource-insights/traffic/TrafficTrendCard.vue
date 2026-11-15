@@ -2,13 +2,13 @@
 import type { TrafficRange } from '../services/trafficTrend'
 import type { NodeData } from '@/stores/nodes'
 import { Icon } from '@iconify/vue'
-import { computed } from 'vue'
-import VChart from 'vue-echarts'
+import { usePreferredReducedMotion } from '@vueuse/core'
+import { computed, onMounted } from 'vue'
+import { ChartCanvas, preloadChartCanvas } from '@/components/chartCanvas'
 import { useAppStore } from '@/stores/app'
 import { formatBytes } from '@/utils/helper'
 import { useTrafficTrend } from '../composables/useTrafficTrend'
 import TrafficNodeSelect from './TrafficNodeSelect.vue'
-import '@/utils/echarts'
 
 const props = defineProps<{
   nodes: readonly NodeData[]
@@ -17,6 +17,7 @@ const props = defineProps<{
 
 const appStore = useAppStore()
 const isDark = computed(() => appStore.isDark)
+const reducedMotion = usePreferredReducedMotion()
 
 const {
   selectedEntity,
@@ -32,6 +33,8 @@ const {
   nodes: () => props.nodes,
   settings: () => appStore.publicSettings?.theme_settings,
 })
+
+onMounted(preloadChartCanvas)
 
 defineExpose({
   refresh,
@@ -97,6 +100,9 @@ const chartOption = computed(() => {
   const splitLineColor = isDark.value ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)'
 
   return {
+    animation: reducedMotion.value !== 'reduce',
+    animationDuration: 170,
+    animationDurationUpdate: 120,
     tooltip: {
       trigger: 'axis',
       backgroundColor: isDark.value ? '#1e293b' : '#ffffff',
@@ -381,7 +387,7 @@ const rangeSummary = computed(() => {
     <div class="relative min-h-64 w-full flex-1">
       <div
         v-if="props.loading || refreshing"
-        class="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-background/50 backdrop-blur-xs transition-all"
+        class="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-background/60"
       >
         <div class="flex items-center gap-2 rounded-lg bg-card/90 px-3 py-1.5 text-xs text-muted-foreground shadow-xs border border-border/50">
           <Icon icon="lucide:loader-2" class="size-4 animate-spin text-emerald-600" />
@@ -389,37 +395,39 @@ const rangeSummary = computed(() => {
         </div>
       </div>
 
-      <div v-if="trafficView.state === 'loading' && !refreshing" class="flex h-64 items-center justify-center">
-        <Icon icon="lucide:loader-2" class="size-6 animate-spin text-emerald-600" />
-      </div>
+      <Transition name="panel">
+        <div v-if="trafficView.state === 'loading' && !refreshing" key="loading" class="flex h-64 items-center justify-center" role="status" aria-label="正在加载流量数据">
+          <Icon icon="lucide:loader-2" class="size-6 motion-safe:animate-spin text-emerald-600" />
+        </div>
 
-      <div
-        v-else-if="trafficView.state === 'unsupported'"
-        class="flex h-64 flex-col items-center justify-center text-xs text-amber-600 dark:text-amber-400"
-      >
-        <Icon icon="lucide:alert-circle" class="mb-2 size-8 opacity-60" />
-        <p>{{ trafficView.message || '当前保留天数不足以展示 30 天历史' }}</p>
-      </div>
+        <div
+          v-else-if="trafficView.state === 'unsupported'" key="unsupported"
+          class="flex h-64 flex-col items-center justify-center text-xs text-amber-600 dark:text-amber-400"
+        >
+          <Icon icon="lucide:alert-circle" class="mb-2 size-8 opacity-60" />
+          <p>{{ trafficView.message || '当前保留天数不足以展示 30 天历史' }}</p>
+        </div>
 
-      <div
-        v-else-if="trafficView.state === 'error'"
-        class="flex h-64 flex-col items-center justify-center text-xs text-destructive"
-      >
-        <Icon icon="lucide:alert-circle" class="mb-2 size-8 opacity-60" />
-        <p>{{ trafficView.message || '流量数据加载失败' }}</p>
-      </div>
+        <div
+          v-else-if="trafficView.state === 'error'" key="error"
+          class="flex h-64 flex-col items-center justify-center text-xs text-destructive"
+        >
+          <Icon icon="lucide:alert-circle" class="mb-2 size-8 opacity-60" />
+          <p>{{ trafficView.message || '流量数据加载失败' }}</p>
+        </div>
 
-      <div
-        v-else-if="trafficView.state === 'empty' || trafficView.days.length === 0"
-        class="flex h-64 flex-col items-center justify-center text-xs text-muted-foreground"
-      >
-        <Icon icon="lucide:bar-chart-2" class="mb-2 size-8 opacity-40" />
-        <p>{{ trafficView.message || '暂无历史流量记录' }}</p>
-      </div>
+        <div
+          v-else-if="trafficView.state === 'empty' || trafficView.days.length === 0" key="empty"
+          class="flex h-64 flex-col items-center justify-center text-xs text-muted-foreground"
+        >
+          <Icon icon="lucide:bar-chart-2" class="mb-2 size-8 opacity-40" />
+          <p>{{ trafficView.message || '暂无历史流量记录' }}</p>
+        </div>
 
-      <div v-else class="h-64 w-full">
-        <VChart :option="chartOption" autoresize style="width: 100%; height: 100%;" />
-      </div>
+        <div v-else key="chart" class="h-64 w-full">
+          <ChartCanvas :option="chartOption" class="size-full" />
+        </div>
+      </Transition>
     </div>
 
     <!-- Footer -->

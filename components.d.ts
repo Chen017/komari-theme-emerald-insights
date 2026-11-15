@@ -15,7 +15,6 @@ declare module 'vue' {
     Header: typeof import('./src/components/Header.vue')['default']
     LoadChart: typeof import('./src/components/LoadChart.vue')['default']
     LoadingCover: typeof import('./src/components/LoadingCover.vue')['default']
-    MarkdownRenderer: typeof import('./src/components/MarkdownRenderer.vue')['default']
     NodeCard: typeof import('./src/components/NodeCard.vue')['default']
     NodeGeneralCards: typeof import('./src/components/NodeGeneralCards.vue')['default']
     NodeList: typeof import('./src/components/NodeList.vue')['default']

@@ -405,13 +405,15 @@ function summarize(state: DayState): DailyTrafficAggregate {
 
 export function resolveAnalyticsTimeZone(
   timeZone: AnalyticsTimeZone,
-  browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone,
+  browserTimeZone?: string,
 ): string {
-  const resolved = timeZone === 'browser' ? browserTimeZone : timeZone
+  const resolved = timeZone === 'browser'
+    ? browserTimeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone
+    : timeZone
   if (!resolved)
     throw new RangeError('Browser time zone could not be resolved')
 
-  getDateFormatter(resolved).format(0)
+  getDateFormatter(resolved)
   return resolved
 }
 

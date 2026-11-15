@@ -7,10 +7,11 @@ import {
   useDocumentVisibility,
   useElementSize,
   useElementVisibility,
+  usePreferredReducedMotion,
   useRafFn,
 } from '@vueuse/core'
 import createGlobe from 'cobe'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onActivated, onBeforeUnmount, onDeactivated, ref, watch } from 'vue'
 import { useAppStore } from '@/stores/app'
 import { useNodesStore } from '@/stores/nodes'
 import { getCoordByCode, getCountryCodeFromRegion } from '@/utils/geoHelper'
@@ -31,10 +32,13 @@ const { width: containerWidth, height: containerHeight } = useElementSize(contai
 
 const documentVisibility = useDocumentVisibility()
 const elementVisible = useElementVisibility(containerRef)
-const shouldRender = computed(() => documentVisibility.value === 'visible' && elementVisible.value)
-const shouldAutoRotate = computed(() => appStore.earthViewMode !== 'earth-stop')
+const pageActive = ref(true)
+const reducedMotion = usePreferredReducedMotion()
+const shouldRender = computed(() => pageActive.value && documentVisibility.value === 'visible' && elementVisible.value)
+const shouldAutoRotate = computed(() => appStore.earthViewMode !== 'earth-stop' && reducedMotion.value !== 'reduce')
 
 let globe: Globe | null = null
+let startFrame: number | undefined
 const INITIAL_THETA = 0.22
 const MIN_THETA = -0.65
 const MAX_THETA = 0.65
@@ -384,6 +388,10 @@ function startGlobe() {
 
 // cobe 不会清理自己创建的 wrapper，这里手动收尾。
 function stopGlobe() {
+  if (startFrame !== undefined) {
+    cancelAnimationFrame(startFrame)
+    startFrame = undefined
+  }
   pauseRaf()
   globe?.destroy()
   globe = null
@@ -396,13 +404,23 @@ function stopGlobe() {
   }
 }
 
-function rebuildGlobe() {
-  stopGlobe()
-  startGlobe()
+function scheduleGlobe() {
+  if (globe || !shouldRender.value || startFrame !== undefined)
+    return
+  startFrame = requestAnimationFrame(() => {
+    startFrame = undefined
+    if (shouldRender.value)
+      startGlobe()
+  })
 }
 
-onMounted(() => {
-  startGlobe()
+onActivated(() => {
+  pageActive.value = true
+})
+
+onDeactivated(() => {
+  pageActive.value = false
+  pauseRaf()
 })
 
 onBeforeUnmount(() => {
@@ -411,7 +429,8 @@ onBeforeUnmount(() => {
 
 // 切换主题时重建 globe
 watch(() => appStore.isDark, () => {
-  rebuildGlobe()
+  stopGlobe()
+  scheduleGlobe()
 })
 
 watch(
@@ -447,10 +466,11 @@ watch(
 )
 
 watch(shouldRender, () => {
-  if (!globe)
-    return
+  scheduleGlobe()
   syncRafState()
-})
+}, { flush: 'post' })
+
+watch(shouldAutoRotate, syncRafState)
 
 function onPointerDown(e: PointerEvent) {
   isPointerDown = true

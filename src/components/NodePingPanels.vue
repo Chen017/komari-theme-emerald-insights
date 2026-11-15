@@ -7,7 +7,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  select: [taskId: number]
+  select: [taskId: number, trigger: HTMLElement]
 }>()
 
 const rows = useNodePingDisplay(() => props.uuid)
@@ -39,7 +39,7 @@ const panels = [
             compact ? 'py-0.5 text-[10px]' : 'py-1 text-[11px]',
             row.id === undefined ? 'text-muted-foreground' : 'cursor-pointer hover:bg-background/70',
           ]"
-          @click.stop="row.id !== undefined && emit('select', row.id)"
+          @click.stop="row.id !== undefined && emit('select', row.id, $event.currentTarget as HTMLElement)"
         >
           <span class="flex min-w-0 items-center justify-between gap-0.5 leading-4">
             <span class="flex min-w-0 items-center gap-1 text-muted-foreground">

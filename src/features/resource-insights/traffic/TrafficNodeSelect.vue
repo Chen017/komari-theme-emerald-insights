@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { NodeData } from '@/stores/nodes'
 import { Icon } from '@iconify/vue'
-import { computed } from 'vue'
 import {
   SelectContent,
   SelectIcon,
@@ -13,6 +12,7 @@ import {
   SelectTrigger,
   SelectViewport,
 } from 'reka-ui'
+import { computed } from 'vue'
 
 const props = defineProps<{
   modelValue: string
@@ -67,7 +67,7 @@ function handleValueChange(val: any) {
       <SelectContent
         position="popper"
         :side-offset="6"
-        class="z-50 min-w-[170px] max-w-[260px] overflow-hidden rounded-lg border border-border/70 bg-popover/95 p-1 text-foreground shadow-lg backdrop-blur-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2"
+        class="z-50 min-w-[170px] max-w-[260px] overflow-hidden rounded-lg border border-border/70 bg-popover/95 p-1 text-foreground shadow-lg backdrop-blur-sm select-motion"
       >
         <SelectViewport class="p-0.5 max-h-64 overflow-y-auto w-full">
           <!-- All nodes option -->

@@ -15,11 +15,14 @@ export interface ResourceHistoryCapabilities {
 }
 
 export function normalizeMetricDefinition(raw: unknown): MetricCapability | null {
-  if (!raw || typeof raw !== 'object') return null
+  if (!raw || typeof raw !== 'object')
+    return null
   const item = raw as Record<string, unknown>
   // Strictly require name and retention_days without guessed aliases
-  if (typeof item.name !== 'string' || !item.name.trim()) return null
-  if (typeof item.retention_days !== 'number' || !Number.isFinite(item.retention_days)) return null
+  if (typeof item.name !== 'string' || !item.name.trim())
+    return null
+  if (typeof item.retention_days !== 'number' || !Number.isFinite(item.retention_days))
+    return null
 
   return {
     name: item.name.trim(),
@@ -32,16 +35,24 @@ export function normalizeMetricDefinition(raw: unknown): MetricCapability | null
 const CAPABILITIES_CACHE_TTL_MS = 10 * 60 * 1000 // 10 minutes
 let cachedCapabilities: ResourceHistoryCapabilities | null = null
 let cachedAt = 0
+let pendingCapabilities: Promise<ResourceHistoryCapabilities> | undefined
 
-export async function fetchHistoryCapabilities(
+export function fetchHistoryCapabilities(
   call: RpcCall,
   options?: { bypassCache?: boolean },
 ): Promise<ResourceHistoryCapabilities> {
   const now = Date.now()
   if (!options?.bypassCache && cachedCapabilities && now - cachedAt < CAPABILITIES_CACHE_TTL_MS) {
-    return cachedCapabilities
+    return Promise.resolve(cachedCapabilities)
   }
 
+  pendingCapabilities ??= queryCapabilities(call).finally(() => {
+    pendingCapabilities = undefined
+  })
+  return pendingCapabilities
+}
+
+async function queryCapabilities(call: RpcCall): Promise<ResourceHistoryCapabilities> {
   let trafficUp: MetricCapability | null = null
   let trafficDown: MetricCapability | null = null
 
@@ -50,9 +61,12 @@ export async function fetchHistoryCapabilities(
     if (Array.isArray(defs)) {
       for (const raw of defs) {
         const item = normalizeMetricDefinition(raw)
-        if (!item) continue
-        if (item.name === 'traffic.up') trafficUp = item
-        else if (item.name === 'traffic.down') trafficDown = item
+        if (!item)
+          continue
+        if (item.name === 'traffic.up')
+          trafficUp = item
+        else if (item.name === 'traffic.down')
+          trafficDown = item
       }
     }
   }
@@ -73,7 +87,6 @@ export async function fetchHistoryCapabilities(
   }
 
   cachedCapabilities = capabilities
-  cachedAt = now
+  cachedAt = Date.now()
   return capabilities
 }
-

@@ -1,6 +1,7 @@
 import type { ResourceHistoryCapabilities } from '../services/historyCapabilities'
 import type { DailyTrafficAggregate } from '../services/trafficAggregator'
 import type { TrafficRange, TrafficTrendSnapshot } from '../services/trafficTrend'
+import type { TrafficTrendRequestLease } from '../services/trafficTrendRequestPool'
 import type { NodeData } from '@/stores/nodes'
 import { computed, getCurrentScope, onScopeDispose, ref, shallowRef, watch } from 'vue'
 import { getSharedRpc } from '../../../utils/rpc'
@@ -22,7 +23,7 @@ import { buildTrafficTrendCacheKey, readTrafficTrendCache, writeTrafficTrendCach
 import { createTrafficTrendRequestPool } from '../services/trafficTrendRequestPool'
 
 const TIME_ZONE = 'Asia/Shanghai'
-const requestPool = createTrafficTrendRequestPool()
+const requestPool = createTrafficTrendRequestPool<TrafficTrendSnapshot>()
 
 export interface UseTrafficTrendOptions {
   nodes: () => readonly NodeData[]
@@ -139,7 +140,14 @@ export function useTrafficTrend(options: UseTrafficTrendOptions) {
   })
 
   let requestGeneration = 0
-  let activeLease: { release: () => void } | null = null
+  let activeLease: TrafficTrendRequestLease<TrafficTrendSnapshot> | null = null
+  let activeKey: string | null = null
+
+  function releaseActiveLease() {
+    activeLease?.release()
+    activeLease = null
+    activeKey = null
+  }
 
   if (getCurrentScope()) {
     const onFocus = () => {
@@ -151,8 +159,7 @@ export function useTrafficTrend(options: UseTrafficTrendOptions) {
       if (typeof window !== 'undefined')
         window.removeEventListener('focus', onFocus)
       requestGeneration += 1
-      activeLease?.release()
-      activeLease = null
+      releaseActiveLease()
     })
   }
 
@@ -199,15 +206,14 @@ export function useTrafficTrend(options: UseTrafficTrendOptions) {
   })
 
   async function fetchTrend(isManualRefresh = false) {
-    queryNow.value = Date.now()
+    const nowMs = Date.now()
+    queryNow.value = nowMs
+    const range = selectedRange.value
     const queryDates = [...dates.value]
     const generation = ++requestGeneration
     const entityIds = targetEntityIds.value
     if (entityIds.length === 0) {
-      if (activeLease) {
-        activeLease.release()
-        activeLease = null
-      }
+      releaseActiveLease()
       loading.value = false
       refreshing.value = false
       snapshot.value = {
@@ -228,22 +234,22 @@ export function useTrafficTrend(options: UseTrafficTrendOptions) {
       origin: typeof window !== 'undefined' ? window.location.origin : '',
       loggedIn: false,
       entityIds,
-      range: selectedRange.value,
+      range,
       timeZone: TIME_ZONE,
       dates: queryDates,
       schema: 3,
       capabilityVersion: 3,
     })
 
+    if (isManualRefresh || activeKey !== cacheKey)
+      releaseActiveLease()
+
     if (!isManualRefresh && typeof localStorage !== 'undefined') {
       const cached = readTrafficTrendCache(localStorage, cacheKey)
       if (cached) {
         if (generation !== requestGeneration)
           return
-        if (activeLease) {
-          activeLease.release()
-          activeLease = null
-        }
+        releaseActiveLease()
         loading.value = false
         refreshing.value = false
         snapshot.value = cached
@@ -251,32 +257,27 @@ export function useTrafficTrend(options: UseTrafficTrendOptions) {
       }
     }
 
-    if (isManualRefresh)
-      refreshing.value = true
-    else
-      loading.value = true
+    refreshing.value = isManualRefresh
+    loading.value = !isManualRefresh
 
-    let lease: any = null
+    let lease: TrafficTrendRequestLease<TrafficTrendSnapshot> | null = null
     try {
-      try {
-        const fetchedCaps = await fetchHistoryCapabilities(
-          (method, params, opts) => getSharedRpc().call(method, params, opts),
-          { bypassCache: isManualRefresh },
-        )
-        if (generation === requestGeneration) {
-          capabilities.value = fetchedCaps
+      const probe = fetchHistoryCapabilities(
+        (method, params, opts) => getSharedRpc().call(method, params, opts),
+        { bypassCache: isManualRefresh },
+      ).then((fetched) => {
+        if (generation === requestGeneration)
+          capabilities.value = fetched
+        return fetched
+      })
+      if (range === '30d') {
+        const { supports30dTraffic } = await probe
+        if (generation !== requestGeneration)
+          return
+        if (supports30dTraffic === false) {
+          selectedRange.value = '7d'
+          return
         }
-      }
-      catch {
-        // Continue even if capabilities probe fails
-      }
-
-      if (generation !== requestGeneration)
-        return
-
-      if (activeLease) {
-        activeLease.release()
-        activeLease = null
       }
 
       lease = requestPool.acquire(cacheKey, async (signal) => {
@@ -285,9 +286,10 @@ export function useTrafficTrend(options: UseTrafficTrendOptions) {
           entityIds,
           dates: queryDates,
           timeZone: TIME_ZONE,
-          nowMs: queryNow.value,
+          nowMs,
           signal,
         })
+        signal.throwIfAborted()
 
         if (resolved.failedWindows.length > 0 && resolved.evidence.length === 0) {
           const builtSnapshot: TrafficTrendSnapshot = {
@@ -301,7 +303,7 @@ export function useTrafficTrend(options: UseTrafficTrendOptions) {
             retryable: true,
             message: '历史流量获取失败',
           }
-          return builtSnapshot as any
+          return builtSnapshot
         }
 
         const byEntity = new Map<string, DailyTrafficAggregate[]>()
@@ -312,6 +314,7 @@ export function useTrafficTrend(options: UseTrafficTrendOptions) {
             dates: queryDates,
             deltas: item.deltas,
             counters: item.counters,
+            nowMs,
           })
           byEntity.set(item.entityId, aggregates)
         }
@@ -339,16 +342,18 @@ export function useTrafficTrend(options: UseTrafficTrendOptions) {
         if (resolved.failedWindows.length === 0 && typeof localStorage !== 'undefined')
           writeTrafficTrendCache(localStorage, cacheKey, builtSnapshot)
 
-        return builtSnapshot as any
+        return builtSnapshot
       })
+      activeLease?.release()
       activeLease = lease
+      activeKey = cacheKey
 
       const res = await lease.promise
       if (generation !== requestGeneration)
         return
-      snapshot.value = res as unknown as TrafficTrendSnapshot
+      snapshot.value = res
     }
-    catch (err: any) {
+    catch (err) {
       if (generation !== requestGeneration)
         return
       snapshot.value = {
@@ -367,10 +372,8 @@ export function useTrafficTrend(options: UseTrafficTrendOptions) {
       if (generation === requestGeneration) {
         loading.value = false
         refreshing.value = false
-        if (activeLease === lease) {
-          lease?.release?.()
-          activeLease = null
-        }
+        if (activeLease === lease)
+          releaseActiveLease()
       }
     }
   }

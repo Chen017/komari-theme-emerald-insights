@@ -1,45 +1,45 @@
 <script setup lang="ts">
 import type { NodeData } from '@/stores/nodes'
-import { computed, defineAsyncComponent, nextTick, onActivated, onDeactivated, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
+import { computed, defineAsyncComponent, onDeactivated, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import PingChartPlaceholder from '@/components/PingChartPlaceholder.vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Empty } from '@/components/ui/empty'
-import { useBackgroundSurface } from '@/composables/useBackgroundSurface'
+import { loadNodeCard, loadNodeDetail } from '@/router/pageLoaders'
 import { useAppStore } from '@/stores/app'
 import { useNodesStore } from '@/stores/nodes'
 import { isNodeInGroup } from '@/utils/groupHelper'
 
 defineOptions({ name: 'HomeView' })
 
-const NodeCard = defineAsyncComponent(() => import('@/components/NodeCard.vue'))
+const NodeCard = defineAsyncComponent(loadNodeCard)
 const NodeGeneralCards = defineAsyncComponent(() => import('@/components/NodeGeneralCards.vue'))
-const PingChart = defineAsyncComponent(() => import('@/components/PingChart.vue'))
-
-const nodeItemStaggerMs = 35
-const nodeItemStaggerLimit = 12
+const PingChart = defineAsyncComponent({
+  loader: () => import('@/components/PingChart.vue'),
+  loadingComponent: PingChartPlaceholder,
+  delay: 0,
+})
 
 const appStore = useAppStore()
-const { pickSurfaceClass } = useBackgroundSurface()
 const nodesStore = useNodesStore()
 const router = useRouter()
-
-onActivated(() => {
-  if (appStore.homeScrollPosition > 0) {
-    nextTick(() => {
-      window.scrollTo({ top: appStore.homeScrollPosition, behavior: 'instant' })
-    })
-  }
-})
+const route = useRoute()
+const pingDialogOpen = ref(false)
+const selectedPing = ref<{ uuid: string, name: string, taskId: number }>()
+let pingTrigger: HTMLElement | undefined
 
 onDeactivated(() => {
-  appStore.homeScrollPosition = window.scrollY
+  pingDialogOpen.value = false
+  selectedPing.value = undefined
+  pingTrigger = undefined
 })
 
-const selectedPingNodeUuid = ref<string | null>(null)
-const selectedPingTaskId = ref<number>()
+watch(() => nodesStore.nodes, (nodes) => {
+  if (pingDialogOpen.value && !nodes.some(node => node.uuid === selectedPing.value?.uuid))
+    pingDialogOpen.value = false
+})
 
 watch(() => nodesStore.groups, (groups) => {
   if (appStore.nodeSelectedGroup !== 'all' && !groups.includes(appStore.nodeSelectedGroup))
@@ -56,37 +56,24 @@ const nodeList = computed(() => {
   return [...nodes].sort((a, b) => (a.online === b.online ? 0 : a.online ? -1 : 1))
 })
 
-const selectedPingNode = computed(() => {
-  if (!selectedPingNodeUuid.value)
-    return null
-  return nodesStore.nodes.find(node => node.uuid === selectedPingNodeUuid.value) ?? null
-})
-
-const pingDialogOpen = computed({
-  get: () => selectedPingNode.value !== null,
-  set: (open: boolean) => {
-    if (!open)
-      selectedPingNodeUuid.value = null
-  },
-})
-
-function handleNodeClick(node: typeof nodesStore.nodes[number]) {
-  router.push({ name: 'instance-detail', params: { id: node.uuid } })
+function handleNodeClick(node: NodeData) {
+  void router.push({ name: 'instance-detail', params: { id: node.uuid } })
 }
 
-function handlePingClick(node: NodeData, taskId: number) {
-  selectedPingTaskId.value = taskId
-  selectedPingNodeUuid.value = node.uuid
+function prefetchNodeDetail() {
+  void loadNodeDetail().catch(() => {})
 }
 
-function getNodeItemTransitionKey(node: typeof nodesStore.nodes[number]): string {
-  return `${appStore.nodeSelectedGroup}-${node.uuid}`
+function handlePingClick(node: NodeData, taskId: number, trigger: HTMLElement) {
+  pingTrigger = trigger
+  selectedPing.value = { uuid: node.uuid, name: node.name, taskId }
+  pingDialogOpen.value = true
 }
 
-function getNodeItemTransitionStyle(index: number): Record<string, string> {
-  return {
-    '--node-item-delay': `${Math.min(index, nodeItemStaggerLimit) * nodeItemStaggerMs}ms`,
-  }
+function restorePingFocus(event: Event) {
+  event.preventDefault()
+  if (route.name === 'home' && !pingDialogOpen.value && pingTrigger?.isConnected)
+    pingTrigger.focus({ preventScroll: true })
 }
 </script>
 
@@ -95,21 +82,10 @@ function getNodeItemTransitionStyle(index: number): Record<string, string> {
     <div v-if="appStore.connectionError" class="alert px-4">
       <Alert
         variant="destructive"
-        :class="pickSurfaceClass('border-none bg-red-400/10 rounded-md', 'border-none bg-red-400/10 backdrop-blur-xs rounded-md')"
+        class="border-none bg-red-400/10 rounded-md"
       >
         <AlertTitle>RPC 服务错误</AlertTitle>
         <AlertDescription>连接服务器失败，请检查网络设置或刷新页面后再试。</AlertDescription>
-      </Alert>
-    </div>
-
-    <div v-if="appStore.alertEnabled && appStore.alertContent" class="alert px-4">
-      <Alert :class="pickSurfaceClass('border-none bg-background rounded-md', 'border-none bg-background/60 backdrop-blur-xs rounded-md')">
-        <AlertTitle v-if="appStore.alertTitle">
-          {{ appStore.alertTitle }}
-        </AlertTitle>
-        <AlertDescription>
-          <MarkdownRenderer :content="appStore.alertContent" />
-        </AlertDescription>
       </Alert>
     </div>
 
@@ -133,19 +109,23 @@ function getNodeItemTransitionStyle(index: number): Record<string, string> {
       </div>
       <TransitionGroup
         v-if="nodeList.length !== 0"
-        :appear="!appStore.disablePageAnimation"
-        :css="!appStore.disablePageAnimation"
         name="node-card-switch"
         tag="div"
         class="pointer-events-auto gap-3 grid grid-cols-1 sm:grid-cols-[repeat(auto-fill,minmax(300px,1fr))]"
       >
         <div
-          v-for="(node, index) in nodeList"
-          :key="getNodeItemTransitionKey(node)"
+          v-for="node in nodeList"
+          :key="node.uuid"
           class="min-w-0"
-          :style="getNodeItemTransitionStyle(index)"
         >
-          <NodeCard :node="node" @click="handleNodeClick(node)" @ping-click="handlePingClick" />
+          <NodeCard
+            :node="node"
+            @click="handleNodeClick(node)"
+            @pointerenter="prefetchNodeDetail"
+            @focusin="prefetchNodeDetail"
+            @pointerdown="prefetchNodeDetail"
+            @ping-click="handlePingClick"
+          />
         </div>
       </TransitionGroup>
       <div v-else class="pointer-events-auto text-muted-foreground text-center py-8">
@@ -155,14 +135,17 @@ function getNodeItemTransitionStyle(index: number): Record<string, string> {
 
     <Dialog v-model:open="pingDialogOpen">
       <DialogContent
-        v-if="selectedPingNode"
-        class="max-w-6xl gap-0 overflow-hidden border-emerald-600/10 p-0 shadow-[0_0_2rem] shadow-emerald-800/10 transition-all"
-        :class="pickSurfaceClass('bg-background', 'bg-background/60')"
+        v-if="selectedPing"
+        class="max-w-6xl gap-0 overflow-hidden border-emerald-600/10 p-0 shadow-[0_0_2rem] shadow-emerald-800/10 bg-background"
+        @close-auto-focus="restorePingFocus"
       >
         <DialogHeader class="flex h-13 flex-row items-center px-4">
-          <DialogTitle class="truncate">
-            {{ selectedPingNode.name }} 延迟 / 丢包
+          <DialogTitle class="min-w-0 truncate pr-10">
+            {{ selectedPing.name }} 延迟 / 丢包
           </DialogTitle>
+          <DialogDescription class="sr-only">
+            选择时间范围查看该节点的延迟和丢包历史。
+          </DialogDescription>
           <div class="absolute inset-0 mx-0 max-w-none overflow-hidden bg-slate-50 dark:bg-slate-900/50 -z-9 zoom-90">
             <div class="absolute top-0 left-1/2 -ml-152 h-100 w-325 dark:mask-[linear-gradient(white,transparent)]">
               <div
@@ -173,11 +156,11 @@ function getNodeItemTransitionStyle(index: number): Record<string, string> {
                   class="absolute inset-x-0 inset-y-[-50%] h-[200%] w-full skew-y-[-18deg] fill-black/40 stroke-black/50 mix-blend-overlay dark:fill-white/2.5 dark:stroke-white/5"
                 >
                   <defs>
-                    <pattern id="_S_1_" width="72" height="56" patternUnits="userSpaceOnUse" x="-12" y="4">
+                    <pattern id="ping-dialog-grid" width="72" height="56" patternUnits="userSpaceOnUse" x="-12" y="4">
                       <path d="M.5 56V.5H72" fill="none" />
                     </pattern>
                   </defs>
-                  <rect width="100%" height="100%" stroke-width="0" fill="url(#_S_1_)" /><svg
+                  <rect width="100%" height="100%" stroke-width="0" fill="url(#ping-dialog-grid)" /><svg
                     x="-12" y="4"
                     class="overflow-visible"
                   >
@@ -191,8 +174,13 @@ function getNodeItemTransitionStyle(index: number): Record<string, string> {
             </div>
           </div>
         </DialogHeader>
-        <div class="max-h-[calc(90vh-4rem)] overflow-y-auto p-4 pt-0">
-          <PingChart :key="selectedPingTaskId" :uuid="selectedPingNode.uuid" :initial-task-id="selectedPingTaskId" />
+        <div class="h-[min(34rem,calc(90dvh-3.25rem))] overflow-y-auto overscroll-contain p-4 pt-0">
+          <PingChart
+            :key="`${selectedPing.uuid}:${selectedPing.taskId}`"
+            :uuid="selectedPing.uuid"
+            :initial-task-id="selectedPing.taskId"
+            :active="pingDialogOpen"
+          />
         </div>
       </DialogContent>
     </Dialog>
@@ -203,29 +191,22 @@ function getNodeItemTransitionStyle(index: number): Record<string, string> {
 .node-card-switch-enter-active,
 .node-card-switch-leave-active {
   transition:
-    opacity 180ms ease,
-    transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
-    filter 180ms ease;
-}
-
-.node-card-switch-enter-active {
-  transition-delay: var(--node-item-delay, 0ms);
+    opacity 150ms ease,
+    transform 180ms var(--motion-ease);
 }
 
 .node-card-switch-move {
-  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 180ms var(--motion-ease);
 }
 
 .node-card-switch-enter-from {
   opacity: 0;
-  transform: translateY(10px) scale(0.985);
-  filter: blur(3px);
+  transform: translateY(5px);
 }
 
 .node-card-switch-leave-to {
   opacity: 0;
-  transform: translateY(-6px) scale(0.99);
-  filter: blur(2px);
+  transform: translateY(-3px);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -233,14 +214,12 @@ function getNodeItemTransitionStyle(index: number): Record<string, string> {
   .node-card-switch-leave-active,
   .node-card-switch-move {
     transition: none;
-    transition-delay: 0ms;
   }
 
   .node-card-switch-enter-from,
   .node-card-switch-leave-to {
     opacity: 1;
     transform: none;
-    filter: none;
   }
 }
 </style>

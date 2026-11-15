@@ -49,7 +49,7 @@ function formatCny(val: number): string {
 </script>
 
 <template>
-  <div class="bg-white/80 dark:bg-neutral-900/80 backdrop-blur border border-neutral-200/80 dark:border-neutral-800/80 rounded-2xl p-5 shadow-xs">
+  <div class="bg-white/90 dark:bg-neutral-900/90 border border-neutral-200/80 dark:border-neutral-800/80 rounded-2xl p-5 shadow-xs">
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
       <div class="flex items-center gap-2">
         <div class="p-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">

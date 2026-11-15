@@ -24,20 +24,25 @@ const emits = defineEmits<DialogContentEmits>()
 
 const delegatedProps = reactiveOmit(props, 'class', 'overlayClass', 'showClose')
 const forwarded = useForwardPropsEmits(delegatedProps, emits)
+const closeIcon = {
+  body: '<path d="M18 6 6 18M6 6l12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+  width: 24,
+  height: 24,
+}
 </script>
 
 <template>
   <DialogPortal>
     <DialogOverlay
       :class="cn(
-        'fixed inset-0 z-50 bg-background/70 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+        'dialog-scrim fixed inset-0 z-50',
         props.overlayClass,
       )"
     />
     <DialogContent
       v-bind="forwarded"
       :class="cn(
-        'fixed left-1/2 top-1/2 z-50 grid w-[calc(100vw-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 rounded-lg border bg-popover p-4 text-popover-foreground shadow-xl duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 focus:outline-none',
+        'dialog-surface fixed left-1/2 top-1/2 z-50 grid w-[calc(100vw-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 rounded-lg border bg-popover p-4 text-popover-foreground shadow-xl focus:outline-none',
         props.class,
       )"
     >
@@ -47,7 +52,7 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits)
         class="absolute right-3 top-3 inline-flex size-7 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none"
         aria-label="关闭"
       >
-        <Icon icon="lucide:x" class="size-4" />
+        <Icon :icon="closeIcon" class="size-4" />
       </DialogClose>
     </DialogContent>
   </DialogPortal>

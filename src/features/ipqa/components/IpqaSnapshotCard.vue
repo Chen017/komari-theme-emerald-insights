@@ -4,7 +4,6 @@ import { Icon } from '@iconify/vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { CardX } from '@/components/ui/card-x'
-import { useBackgroundSurface } from '@/composables/useBackgroundSurface'
 import { getRiskColor, getRiskLabel } from '../formatters'
 import { resolveMediaRegion, resolveMediaStatus } from '../mediaStatus'
 import { fetchNodeLatest } from '../services/api'
@@ -12,8 +11,6 @@ import { fetchNodeLatest } from '../services/api'
 const props = defineProps<{
   uuid: string
 }>()
-
-const { pickSurfaceClass } = useBackgroundSurface()
 
 const loading = ref(false)
 const latestReport = ref<IpqaDailyPairedReport | null>(null)
@@ -94,8 +91,7 @@ const chatGpt = computed(() => {
 <template>
   <CardX
     size="small"
-    class="group border-none transition-all rounded-md"
-    :class="pickSurfaceClass('bg-background/60 hover:bg-background', 'bg-background/50 hover:bg-background backdrop-blur-xs')"
+    class="group border-none transition-colors rounded-md bg-background/60 hover:bg-background"
   >
     <template #header>
       <div class="flex items-center gap-1.5">

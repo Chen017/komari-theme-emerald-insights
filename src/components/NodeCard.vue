@@ -7,7 +7,6 @@ import { Badge } from '@/components/ui/badge'
 import { CardX } from '@/components/ui/card-x'
 import { DataTooltip } from '@/components/ui/data-tooltip'
 import { ProgressThin } from '@/components/ui/progress-thin'
-import { useBackgroundSurface } from '@/composables/useBackgroundSurface'
 import { useNodeFormatters } from '@/composables/useNodeFormatters'
 import { useAppStore } from '@/stores/app'
 import { formatDateTime, getStatus } from '@/utils/helper'
@@ -19,11 +18,10 @@ const props = defineProps<{ node: NodeData }>()
 
 const emit = defineEmits<{
   click: []
-  pingClick: [node: NodeData, taskId: number]
+  pingClick: [node: NodeData, taskId: number, trigger: HTMLElement]
 }>()
 
 const appStore = useAppStore()
-const { pickSurfaceClass } = useBackgroundSurface()
 const { formatBytes, formatBytesPerSecond } = useNodeFormatters()
 
 const offlineTime = computed(() => formatDateTime(props.node.time))
@@ -46,21 +44,20 @@ const tagDisplay = computed(() => getNodeTagDisplay(props.node, appStore.lang))
 <template>
   <CardX
     hoverable
-    class="node-card h-full w-full cursor-pointer border-none shadow-[0_0_0_1px] shadow-transparent transition-all duration-200 rounded-md bg-background/60 hover:bg-background hover:shadow-emerald-600/10 hover:shadow-[0_0_20px,0_0_0_1px] hover:-translate-y-0.5 hover:z-1"
-    :class="[pickSurfaceClass('', 'backdrop-blur-sm'), !props.node.online && 'shadow-[0_0_0_1px] !shadow-red-600/20']"
+    class="node-card h-full w-full cursor-pointer border-none shadow-[0_0_0_1px] shadow-transparent transition-[background-color,box-shadow,translate] duration-200 rounded-md bg-background/60 hover:bg-background hover:shadow-emerald-600/10 hover:shadow-[0_0_20px,0_0_0_1px] motion-safe:hover:-translate-y-0.5 hover:z-1"
+    :class="[!props.node.online && 'shadow-[0_0_0_1px] !shadow-red-600/20']"
     @click="emit('click')"
   >
     <template #header>
       <div class="flex gap-2 min-w-0 items-center">
-        <div class="size-2 rounded-full relative" :class="[props.node.online ? 'bg-emerald-600' : 'bg-red-600']">
-          <div
-            class="animate-ping absolute inset-0 rounded-full opacity-50"
-            :class="[props.node.online ? 'bg-emerald-600' : 'bg-red-600']"
-          />
-        </div>
-        <div class="text-md font-bold flex-1 min-w-0 truncate">
+        <div class="size-2 rounded-full" :class="[props.node.online ? 'bg-emerald-600' : 'bg-red-600']" />
+        <RouterLink
+          :to="{ name: 'instance-detail', params: { id: props.node.uuid } }"
+          class="text-md font-bold flex-1 min-w-0 truncate rounded-sm focus-visible:outline-2 focus-visible:outline-ring"
+          @click.stop
+        >
           {{ props.node.name }}
-        </div>
+        </RouterLink>
         <span v-if="!props.node.online" class="shrink-0 text-xs text-destructive" :title="offlineTime">离线</span>
       </div>
     </template>
@@ -163,7 +160,7 @@ const tagDisplay = computed(() => getNodeTagDisplay(props.node, appStore.lang))
           </div>
         </div>
 
-        <NodePingPanels :uuid="props.node.uuid" @select="emit('pingClick', props.node, $event)" />
+        <NodePingPanels :uuid="props.node.uuid" @select="(task, trigger) => emit('pingClick', props.node, task, trigger)" />
 
         <div v-if="tagDisplay.customTags.length > 0" class="flex shrink-0 flex-wrap gap-1 items-center">
           <Badge

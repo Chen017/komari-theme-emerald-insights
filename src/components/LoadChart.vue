@@ -11,7 +11,6 @@ import { CardX } from '@/components/ui/card-x'
 import { Empty } from '@/components/ui/empty'
 import { Spinner } from '@/components/ui/spinner'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { useBackgroundSurface } from '@/composables/useBackgroundSurface'
 import { alignStealToTimeline } from '@/features/cpu-steal/alignment'
 import { fetchCpuStealHistory } from '@/features/cpu-steal/api'
 import { formatRealSteal, scaleStealForChart } from '@/features/cpu-steal/display'
@@ -27,7 +26,6 @@ const props = defineProps<{
 }>()
 
 const appStore = useAppStore()
-const { pickSurfaceClass } = useBackgroundSurface()
 const nodesStore = useNodesStore()
 
 // 从 publicSettings 获取记录保留时间
@@ -87,7 +85,7 @@ const baseTooltipConfig = computed(() => ({
     fontSize: 12,
     lineHeight: 20,
   },
-  extraCssText: `${appStore.backgroundEnabled ? 'backdrop-filter: blur(5px);' : ''}z-index:9;box-shadow:0 0 0 1px ${chartThemeColors.value.tooltipShadow}, 0 0 16px ${chartThemeColors.value.tooltipShadow}`,
+  extraCssText: `z-index:9;box-shadow:0 0 0 1px ${chartThemeColors.value.tooltipShadow}, 0 0 16px ${chartThemeColors.value.tooltipShadow}`,
   axisPointer: {
     type: 'cross' as const,
     crossStyle: {
@@ -963,7 +961,7 @@ onMounted(() => {
   <div class="flex flex-col gap-4">
     <!-- 时间选择器 -->
     <Tabs v-model="selectedView" class="w-full items-center">
-      <TabsList :class="pickSurfaceClass('h-8 bg-background/60 pointer-events-auto rounded-md', 'h-8 bg-background/50 backdrop-blur-xl pointer-events-auto rounded-md')">
+      <TabsList class="h-8 bg-background/60 pointer-events-auto rounded-md">
         <TabsTrigger
           v-for="view in availableViews" :key="view.label" :value="view.label"
           class="h-6.5 text-xs border-none data-[state=active]:text-emerald-600 shadow-none rounded-sm"
@@ -987,8 +985,7 @@ onMounted(() => {
         <!-- CPU 卡片 -->
         <CardX
           size="small"
-          class="border-none transition-all rounded-md"
-          :class="pickSurfaceClass('bg-background/60 hover:bg-background', 'bg-background/50 hover:bg-background backdrop-blur-xs')"
+          class="border-none transition-colors rounded-md bg-background/60 hover:bg-background"
         >
           <template #header>
             <div class="flex items-center justify-between">
@@ -1008,8 +1005,7 @@ onMounted(() => {
         <!-- 内存卡片 -->
         <CardX
           size="small"
-          class="border-none transition-all rounded-md"
-          :class="pickSurfaceClass('bg-background/60 hover:bg-background', 'bg-background/50 hover:bg-background backdrop-blur-xs')"
+          class="border-none transition-colors rounded-md bg-background/60 hover:bg-background"
         >
           <template #header>
             <div class="flex items-center justify-between">
@@ -1038,8 +1034,7 @@ onMounted(() => {
         <!-- 磁盘卡片 -->
         <CardX
           size="small"
-          class="border-none transition-all rounded-md"
-          :class="pickSurfaceClass('bg-background/60 hover:bg-background', 'bg-background/50 hover:bg-background backdrop-blur-xs')"
+          class="border-none transition-colors rounded-md bg-background/60 hover:bg-background"
         >
           <template #header>
             <div class="flex items-center justify-between">
@@ -1067,8 +1062,7 @@ onMounted(() => {
         <!-- 网络卡片 -->
         <CardX
           size="small"
-          class="border-none transition-all rounded-md"
-          :class="pickSurfaceClass('bg-background/60 hover:bg-background', 'bg-background/50 hover:bg-background backdrop-blur-xs')"
+          class="border-none transition-colors rounded-md bg-background/60 hover:bg-background"
         >
           <template #header>
             <div class="flex items-center justify-between">
@@ -1101,8 +1095,7 @@ onMounted(() => {
         <!-- 连接数卡片 -->
         <CardX
           size="small"
-          class="border-none transition-all rounded-md"
-          :class="pickSurfaceClass('bg-background/60 hover:bg-background', 'bg-background/50 hover:bg-background backdrop-blur-xs')"
+          class="border-none transition-colors rounded-md bg-background/60 hover:bg-background"
         >
           <template #header>
             <div class="flex items-center justify-between">
@@ -1122,8 +1115,7 @@ onMounted(() => {
         <!-- 进程卡片 -->
         <CardX
           size="small"
-          class="border-none transition-all rounded-md"
-          :class="pickSurfaceClass('bg-background/60 hover:bg-background', 'bg-background/50 hover:bg-background backdrop-blur-xs')"
+          class="border-none transition-colors rounded-md bg-background/60 hover:bg-background"
         >
           <template #header>
             <div class="flex items-center justify-between">

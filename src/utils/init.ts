@@ -38,6 +38,7 @@ class InitManager {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
   private isPolling = false
   private isInitialized = false
+  private disposed = false
   private useWebSocket: boolean | null = null // 根据主题配置决定
   private wsCloseUnsubscribe: (() => void) | null = null
   private wsErrorUnsubscribe: (() => void) | null = null
@@ -72,26 +73,28 @@ class InitManager {
     }
 
     try {
-      // 1. 测试后端服务是否正常
-      await this.healthCheck()
+      // The public settings request can run alongside the authentication gate.
+      const settings = this.fetchPublicSettings()
+      if (!await this.healthCheck() || this.disposed)
+        return
 
-      // Independent reads share the health check; transport setup still waits
-      // for settings, authentication state and the initial node snapshot.
+      void this.fetchUserInfo()
       await Promise.all([
-        this.fetchPublicSettings(),
-        this.fetchUserInfo(),
+        settings,
         this.fetchNodesData(),
       ])
 
-      // 5. 解除加载状态
-      this.appStore.loading = false
+      if (this.disposed)
+        return
 
-      // 6. 建立 WebSocket 连接并开始轮询
       this.startWebSocketAndPolling()
+      this.appStore.loading = false
 
       this.isInitialized = true
     }
     catch (error) {
+      if (this.disposed)
+        return
       console.error('[InitManager] Initialization failed:', error)
       // 即使失败也解除加载状态，显示错误页面
       this.appStore.loading = false
@@ -102,20 +105,22 @@ class InitManager {
   /**
    * 健康检查 - 测试后端服务是否正常
    */
-  private async healthCheck(): Promise<void> {
+  private async healthCheck(): Promise<boolean> {
     try {
       const result = await this.rpc.ping()
       if (result !== 'pong') {
         throw new RpcError(-32000, 'Unexpected health check response')
       }
+      return true
     }
     catch (error) {
+      if (this.disposed)
+        return false
       if (error instanceof RpcError && error.code === 401) {
         console.warn('[InitManager] Private site detected, redirecting to /admin')
         this.appStore.updateLoginState(false)
-        this.appStore.loading = false
         location.href = '/admin'
-        return
+        return false
       }
       console.error('[InitManager] Health check failed:', error)
       this.appStore.connectionError = true
@@ -130,7 +135,8 @@ class InitManager {
     try {
       const api = getSharedApi()
       const publicSettings = await api.getPublicSettings()
-      this.appStore.publicSettings = publicSettings
+      if (!this.disposed)
+        this.appStore.publicSettings = publicSettings
     }
     catch (error) {
       console.error('[InitManager] Failed to fetch public settings:', error)
@@ -145,10 +151,12 @@ class InitManager {
     try {
       const api = getSharedApi()
       const userInfo = await api.getMe()
-      this.appStore.updateLoginState(userInfo.logged_in)
+      if (!this.disposed)
+        this.appStore.updateLoginState(userInfo.logged_in)
     }
     catch (error) {
-      this.appStore.updateLoginState(false)
+      if (!this.disposed)
+        this.appStore.updateLoginState(false)
       console.error('[InitManager] Failed to fetch user info:', error)
       // 非关键错误，继续初始化
     }
@@ -166,7 +174,8 @@ class InitManager {
       ])
 
       // 初始化节点数据
-      this.nodesStore.initNodes(clientsResult, statusesResult)
+      if (!this.disposed)
+        this.nodesStore.initNodes(clientsResult, statusesResult)
     }
     catch (error) {
       console.error('[InitManager] Failed to fetch nodes data:', error)
@@ -431,6 +440,7 @@ class InitManager {
    * 销毁管理器
    */
   destroy(): void {
+    this.disposed = true
     this.stopPolling()
     this.clearReconnectTimer()
     this.wsCloseUnsubscribe?.()

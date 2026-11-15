@@ -23,17 +23,19 @@ import { createArchiveReader } from '../services/archiveReader'
 
 defineOptions({ name: 'IpqaNodeDetailPage' })
 
+const props = defineProps<{ uuid: string, archiveDate?: string, fromInstance: boolean }>()
+
 const IpqaHistoryExplorer = defineAsyncComponent(() => import('../components/IpqaHistoryExplorer.vue'))
 
 const route = useRoute()
 const router = useRouter()
 const nodesStore = useNodesStore()
 
-const uuid = computed(() => String(route.params.uuid || ''))
+const uuid = computed(() => props.uuid)
 const node = computed(() => nodesStore.nodes.find(n => n.uuid === uuid.value) || null)
 
 const backTarget = computed(() => {
-  const fromInstance = route.query.from === 'instance'
+  const fromInstance = props.fromInstance
     || (typeof window !== 'undefined' && Boolean(window.history.state?.back?.includes(`/instance/${uuid.value}`)))
   if (fromInstance) {
     return {
@@ -227,7 +229,7 @@ function onDateChange(newDate: string) {
 }
 
 watch(
-  [uuid, () => route.query.date],
+  [uuid, () => props.archiveDate],
   ([newUuid, newDate], [oldUuid, oldDate]) => {
     const targetDate = typeof newDate === 'string' ? newDate : undefined
     if (newUuid !== oldUuid) {
@@ -308,7 +310,7 @@ const activeNormalizedReport = computed<IpqaNormalizedReport | null>(() => {
 
     <div v-if="errorMessage" role="alert" class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
       <span>{{ errorMessage }}</span>
-      <button type="button" class="font-medium underline" :disabled="loading" @click="loadArchive(typeof route.query.date === 'string' ? route.query.date : undefined)">
+      <button type="button" class="font-medium underline" :disabled="loading" @click="loadArchive(props.archiveDate)">
         重试
       </button>
     </div>
@@ -362,8 +364,9 @@ const activeNormalizedReport = computed<IpqaNormalizedReport | null>(() => {
           v-for="tab in tabs"
           :key="tab.key"
           type="button"
-          class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium border-b-2 transition-all whitespace-nowrap cursor-pointer"
+          class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap cursor-pointer"
           :class="activeTab === tab.key ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400' : 'border-transparent text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200'"
+          :aria-pressed="activeTab === tab.key"
           @click="activeTab = tab.key"
         >
           <Icon :icon="tab.icon" class="w-4 h-4" />
@@ -371,37 +374,41 @@ const activeNormalizedReport = computed<IpqaNormalizedReport | null>(() => {
         </button>
       </div>
 
-      <!-- Tab Content: Changes tab (doesn't require normalized report) -->
-      <div v-if="activeTab === 'changes'">
-        <p class="text-xs text-neutral-500 dark:text-neutral-400">
-          下方提供各项目独立时间轴与任意两日快照对比；页面末尾为近期语义变动记录。
-        </p>
-      </div>
+      <Transition name="panel">
+        <div :key="activeTab">
+          <!-- Tab Content: Changes tab (doesn't require normalized report) -->
+          <div v-if="activeTab === 'changes'">
+            <p class="text-xs text-neutral-500 dark:text-neutral-400">
+              下方提供各项目独立时间轴与任意两日快照对比；页面末尾为近期语义变动记录。
+            </p>
+          </div>
 
-      <!-- Other tabs require active normalized report -->
-      <div v-else-if="!activeNormalizedReport" class="py-12 text-center text-xs text-neutral-400">
-        该归档日期未包含 {{ activeIpVersion }} 报告数据。
-      </div>
+          <!-- Other tabs require active normalized report -->
+          <div v-else-if="!activeNormalizedReport" class="py-12 text-center text-xs text-neutral-400">
+            该归档日期未包含 {{ activeIpVersion }} 报告数据。
+          </div>
 
-      <div v-else>
-        <!-- Tab 1: Basic Info -->
-        <IpqaBasicInfo v-if="activeTab === 'info'" :report="activeNormalizedReport" />
+          <div v-else>
+            <!-- Tab 1: Basic Info -->
+            <IpqaBasicInfo v-if="activeTab === 'info'" :report="activeNormalizedReport" />
 
-        <!-- Tab 2: Risk Scores -->
-        <IpqaRiskScores v-else-if="activeTab === 'score'" :report="activeNormalizedReport" />
+            <!-- Tab 2: Risk Scores -->
+            <IpqaRiskScores v-else-if="activeTab === 'score'" :report="activeNormalizedReport" />
 
-        <!-- Tab 3: Risk Factors -->
-        <IpqaFactorMatrix v-else-if="activeTab === 'factor'" :report="activeNormalizedReport" />
+            <!-- Tab 3: Risk Factors -->
+            <IpqaFactorMatrix v-else-if="activeTab === 'factor'" :report="activeNormalizedReport" />
 
-        <!-- Tab 4: Media & AI -->
-        <IpqaMediaPanel v-else-if="activeTab === 'media'" :report="activeNormalizedReport" />
+            <!-- Tab 4: Media & AI -->
+            <IpqaMediaPanel v-else-if="activeTab === 'media'" :report="activeNormalizedReport" />
 
-        <!-- Tab 5: Mail & DNSBL -->
-        <IpqaMailPanel v-else-if="activeTab === 'mail'" :report="activeNormalizedReport" />
+            <!-- Tab 5: Mail & DNSBL -->
+            <IpqaMailPanel v-else-if="activeTab === 'mail'" :report="activeNormalizedReport" />
 
-        <!-- Tab 7: Raw Details -->
-        <IpqaRawDetails v-else-if="activeTab === 'raw'" :report="activeNormalizedReport" />
-      </div>
+            <!-- Tab 7: Raw Details -->
+            <IpqaRawDetails v-else-if="activeTab === 'raw'" :report="activeNormalizedReport" />
+          </div>
+        </div>
+      </Transition>
 
       <IpqaHistoryExplorer
         v-if="activeTab !== 'raw'"

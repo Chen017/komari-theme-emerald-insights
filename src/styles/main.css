@@ -150,3 +150,177 @@
     justify-content: center;
   }
 }
+
+:root {
+  --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.startup-loading-leave-active {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  transition: opacity 160ms ease-out;
+}
+
+.startup-content-enter-active {
+  transition: opacity 180ms var(--motion-ease);
+}
+
+.startup-loading-leave-to,
+.startup-content-enter-from {
+  opacity: 0;
+}
+
+.page-forward-enter-active,
+.page-back-enter-active,
+.page-fade-enter-active {
+  transition: opacity 200ms var(--motion-ease), transform 200ms var(--motion-ease);
+}
+
+.page-forward-leave-active,
+.page-back-leave-active,
+.page-fade-leave-active {
+  position: fixed;
+  top: var(--leaving-top);
+  left: var(--leaving-left);
+  width: var(--leaving-width);
+  z-index: 2;
+  pointer-events: none;
+  transition: opacity 140ms ease-out, transform 140ms var(--motion-ease);
+}
+
+.page-forward-enter-from,
+.page-back-enter-from,
+.page-fade-enter-from,
+.page-forward-leave-to,
+.page-back-leave-to,
+.page-fade-leave-to {
+  opacity: 0;
+}
+
+.page-forward-enter-from,
+.page-back-leave-to {
+  transform: translateX(10px);
+}
+
+.page-back-enter-from,
+.page-forward-leave-to {
+  transform: translateX(-10px);
+}
+
+.panel-enter-active {
+  transition: opacity 150ms var(--motion-ease), transform 150ms var(--motion-ease);
+}
+
+.panel-enter-from {
+  opacity: 0;
+  transform: translateY(3px);
+}
+
+.navigation-glass {
+  background-color: color-mix(in srgb, var(--background) 97%, transparent);
+}
+
+.dialog-scrim {
+  background-color: color-mix(in srgb, var(--background) 75%, transparent);
+}
+
+@supports (backdrop-filter: blur(1px)) {
+  .navigation-glass {
+    background-color: color-mix(in srgb, var(--background) 88%, transparent);
+    backdrop-filter: blur(8px);
+  }
+
+  .dialog-scrim {
+    background-color: color-mix(in srgb, var(--background) 62%, transparent);
+    backdrop-filter: blur(4px);
+  }
+}
+
+.dialog-scrim[data-state='open'] {
+  animation: scrim-in 200ms ease-out both;
+}
+
+.dialog-scrim[data-state='closed'] {
+  animation: scrim-out 160ms ease-in both;
+}
+
+.dialog-surface[data-state='open'] {
+  animation: dialog-in 220ms var(--motion-ease) both;
+}
+
+.dialog-surface[data-state='closed'] {
+  animation: dialog-out 160ms ease-in both;
+}
+
+.select-motion[data-state='open'] {
+  animation: select-in 160ms var(--motion-ease) both;
+}
+
+.select-motion[data-state='closed'] {
+  animation: scrim-out 100ms ease-in both;
+}
+
+@keyframes select-in {
+  from { opacity: 0; transform: translateY(-3px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes scrim-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scrim-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes dialog-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes dialog-out {
+  from { opacity: 1; transform: none; }
+  to { opacity: 0; transform: translateY(8px) scale(0.98); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .startup-loading-leave-active {
+    display: none;
+  }
+
+  .startup-content-enter-active {
+    transition: none;
+  }
+
+  .startup-content-enter-from {
+    opacity: 1;
+  }
+
+  .page-forward-enter-active,
+  .page-back-enter-active,
+  .page-fade-enter-active,
+  .page-forward-leave-active,
+  .page-back-leave-active,
+  .page-fade-leave-active,
+  .panel-enter-active {
+    transition: none;
+  }
+
+  .page-forward-enter-from,
+  .page-back-enter-from,
+  .page-forward-leave-to,
+  .page-back-leave-to,
+  .panel-enter-from {
+    transform: none;
+  }
+
+  .dialog-scrim[data-state],
+  .dialog-surface[data-state],
+  .select-motion[data-state] {
+    animation: none;
+  }
+}

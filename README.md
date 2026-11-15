@@ -59,6 +59,8 @@ Modern Komari theme with CPU Steal visualization, Resource Insights, traffic tre
 
 ## 使用与配置
 
+主题设置以 Komari 后台显示的项目为准。升级后，旧版的公告、备案和自定义背景配置会被忽略。页面和弹窗的动效自动遵循设备的「减少动态效果」设置。
+
 Komari Emerald Insights 在传统监控基础上扩展了四大核心模块：**流量趋势**、**近 30 天在线率**、**IPQA 质量分析** 与 **成本与续费**。本节详细说明各特性的依赖关系与配置方法。
 
 ### 1. Resource Insights 快速开始

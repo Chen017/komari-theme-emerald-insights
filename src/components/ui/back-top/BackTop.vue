@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { usePreferredReducedMotion } from '@vueuse/core'
 import { onMounted, onUnmounted, ref } from 'vue'
 
 interface Props {
@@ -14,6 +15,7 @@ const emit = defineEmits<{
 }>()
 
 const show = ref(false)
+const reducedMotion = usePreferredReducedMotion()
 
 function handleScroll() {
   const scrolled = window.scrollY > props.visibilityHeight
@@ -22,7 +24,7 @@ function handleScroll() {
 }
 
 function scrollToTop() {
-  window.scrollTo({ top: 0, behavior: 'smooth' })
+  window.scrollTo({ top: 0, behavior: reducedMotion.value === 'reduce' ? 'instant' : 'smooth' })
 }
 
 onMounted(() => {
@@ -37,16 +39,16 @@ onUnmounted(() => {
 
 <template>
   <Transition
-    enter-active-class="transition-all duration-200"
+    enter-active-class="motion-safe:transition-[opacity,translate] duration-150"
     enter-from-class="opacity-0 translate-y-2"
     enter-to-class="opacity-100 translate-y-0"
-    leave-active-class="transition-all duration-200"
+    leave-active-class="motion-safe:transition-[opacity,translate] duration-150"
     leave-from-class="opacity-100 translate-y-0"
     leave-to-class="opacity-0 translate-y-2"
   >
     <button
       v-show="show"
-      class="fixed bottom-8 right-8 z-[9999] size-10 rounded-full bg-background border shadow-sm flex items-center justify-center text-foreground hover:bg-accent transition-colors"
+      class="fixed bottom-8 right-8 z-20 size-10 rounded-full bg-background border shadow-sm flex items-center justify-center text-foreground hover:bg-accent transition-colors"
       aria-label="返回顶部"
       @click="scrollToTop"
     >

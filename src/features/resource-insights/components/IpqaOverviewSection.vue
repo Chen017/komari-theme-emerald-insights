@@ -176,7 +176,7 @@ watch(
 <template>
   <div
     v-if="appStore.enableIpqaOverview"
-    class="bg-white/80 dark:bg-neutral-900/80 backdrop-blur border border-neutral-200/80 dark:border-neutral-800/80 rounded-2xl p-5 shadow-xs space-y-5"
+    class="bg-white/90 dark:bg-neutral-900/90 border border-neutral-200/80 dark:border-neutral-800/80 rounded-2xl p-5 shadow-xs space-y-5"
   >
     <!-- Header -->
     <div class="flex items-center justify-between">

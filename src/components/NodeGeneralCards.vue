@@ -6,7 +6,6 @@ import { computed, defineAsyncComponent, onMounted, ref } from 'vue'
 import NodeEarthGlobe from '@/components/NodeEarthGlobe.vue'
 import { CardX } from '@/components/ui/card-x'
 import { DataTooltip } from '@/components/ui/data-tooltip'
-import { useBackgroundSurface } from '@/composables/useBackgroundSurface'
 import { useAppStore } from '@/stores/app'
 import { useNodesStore } from '@/stores/nodes'
 import * as financeHelper from '@/utils/financeHelper'
@@ -21,7 +20,6 @@ const props = defineProps<{
 const NodeEarthMaps = defineAsyncComponent(() => import('@/components/NodeEarthMaps.vue'))
 
 const appStore = useAppStore()
-const { pickSurfaceClass } = useBackgroundSurface()
 const nodesStore = useNodesStore()
 const exchangeRates = ref(financeHelper.DEFAULT_EXCHANGE_RATES)
 const exchangeRateBaseCurrency = ref<CurrencyCode>('CNY')
@@ -29,19 +27,8 @@ const excludeFreeNodes = ref(true)
 const financeRateCurrencies: readonly CurrencyCode[] = financeHelper.DISPLAY_FINANCE_CURRENCIES
 const summaryNodes = computed(() => props.nodes ?? nodesStore.nodes)
 const summaryTransitionKey = computed(() => props.transitionKey ?? 'all')
-const metricSwitchTransitionProps = computed(() => ({
-  ...(appStore.disablePageAnimation
-    ? { css: false }
-    : { name: 'metric-switch', mode: 'out-in' as const }),
-}))
 
 const openFinanceCard = ref(false)
-
-function getMetricSwitchStyle(index: number): Record<string, string> {
-  return {
-    '--metric-switch-delay': `${index * 35}ms`,
-  }
-}
 
 function setExchangeRateBaseCurrency(event: Event): void {
   const target = event.target as HTMLSelectElement
@@ -166,9 +153,8 @@ onMounted(async () => {
     <div :class="cardGridClass">
       <CardX
         hoverable
-        class="group h-full border-none rounded-md transition-all"
+        class="group h-full border-none rounded-md transition-colors bg-background/60 hover:bg-background"
         :class="[
-          pickSurfaceClass('bg-background/60 hover:bg-background', 'bg-background/50 hover:bg-background backdrop-blur-xs'),
           showVisualPanel ? 'col-span-4 row-span-1 col-start-1 row-start-2' : 'col-span-1 row-start-2 col-start-1 min-h-18 md:min-h-24',
         ]"
         content-class="h-full !p-3"
@@ -178,8 +164,8 @@ onMounted(async () => {
             <span class="text-xs font-medium tracking-wider text-muted-foreground">月均成本</span>
             <Icon icon="tabler:calendar-month" :width="20" :height="20" class="text-slate-500/20 group-hover:text-slate-500 transition-colors" />
           </div>
-          <Transition v-bind="metricSwitchTransitionProps">
-            <div :key="`formattedMonthlyAverageCost-${summaryTransitionKey}`" class="flex min-w-0 items-baseline gap-1" :style="getMetricSwitchStyle(3)">
+          <Transition name="panel" mode="out-in">
+            <div :key="`formattedMonthlyAverageCost-${summaryTransitionKey}`" class="flex min-w-0 items-baseline gap-1">
               <span class="text-md md:text-2xl font-bold leading-none tracking-tight">{{ formattedMonthlyAverageCost.symbol }}{{ formattedMonthlyAverageCost.value }}</span>
               <span class="truncate text-[11px] md:text-xs font-medium text-muted-foreground">{{ formattedMonthlyAverageCost.currency }}</span>
             </div>
@@ -188,9 +174,8 @@ onMounted(async () => {
       </CardX>
       <CardX
         hoverable
-        class="group h-full border-none rounded-md transition-all"
+        class="group h-full border-none rounded-md transition-colors bg-background/60 hover:bg-background"
         :class="[
-          pickSurfaceClass('bg-background/60 hover:bg-background', 'bg-background/50 hover:bg-background backdrop-blur-xs'),
           showVisualPanel ? 'col-span-4 row-span-1 col-start-5 row-start-2' : 'col-span-1 row-start-2 col-start-2 min-h-18 md:min-h-24',
         ]"
         content-class="h-full !p-3"
@@ -200,8 +185,8 @@ onMounted(async () => {
             <span class="text-xs font-medium tracking-wider text-muted-foreground">年均成本</span>
             <Icon icon="tabler:calendar-stats" :width="20" :height="20" class="text-slate-500/20 group-hover:text-slate-500 transition-colors" />
           </div>
-          <Transition v-bind="metricSwitchTransitionProps">
-            <div :key="`formattedAnnualAverageCost-${summaryTransitionKey}`" class="flex min-w-0 items-baseline gap-1" :style="getMetricSwitchStyle(4)">
+          <Transition name="panel" mode="out-in">
+            <div :key="`formattedAnnualAverageCost-${summaryTransitionKey}`" class="flex min-w-0 items-baseline gap-1">
               <span class="text-md md:text-2xl font-bold leading-none tracking-tight">{{ formattedAnnualAverageCost.symbol }}{{ formattedAnnualAverageCost.value }}</span>
               <span class="truncate text-[11px] md:text-xs font-medium text-muted-foreground">{{ formattedAnnualAverageCost.currency }}</span>
             </div>
@@ -214,8 +199,7 @@ onMounted(async () => {
       >
         <CardX
           hoverable
-          class="group h-full border-none rounded-md transition-all"
-          :class="pickSurfaceClass('bg-background/60 hover:bg-background', 'bg-background/50 hover:bg-background backdrop-blur-xs')"
+          class="group h-full border-none rounded-md transition-colors bg-background/60 hover:bg-background"
           content-class="h-full !p-3" @click="openFinanceCard = !openFinanceCard"
         >
           <div class="flex h-full flex-col justify-between gap-1">
@@ -226,10 +210,9 @@ onMounted(async () => {
                 class="text-slate-500/20 group-hover:text-slate-500 transition-colors"
               />
             </div>
-            <Transition v-bind="metricSwitchTransitionProps">
+            <Transition name="panel" mode="out-in">
               <div
                 :key="`remaining-value-${summaryTransitionKey}`" class="flex items-baseline gap-1 min-w-0"
-                :style="getMetricSwitchStyle(2)"
               >
                 <span class="text-md md:text-2xl font-bold leading-none tracking-tight">
                   {{ formattedRemainingValue.symbol }}{{ formattedRemainingValue.value }}
@@ -243,23 +226,21 @@ onMounted(async () => {
         </CardX>
         <CardX
           hoverable
-          class="absolute top-0 left-1/2 z-20 h-42 w-[260%] max-w-88 -translate-x-[50%] -translate-y-[25%] rounded-md border-none shadow-[0_0_20px,0_0_0_1px] shadow-emerald-600/10 transition-all"
+          class="absolute top-0 left-1/2 z-20 h-42 w-[260%] max-w-88 -translate-x-[50%] -translate-y-[25%] rounded-md border-none shadow-[0_0_20px,0_0_0_1px] shadow-emerald-600/10 transition-colors bg-background"
           :class="[
-            pickSurfaceClass('bg-background', 'bg-background/50 backdrop-blur-lg'),
             openFinanceCard ? 'opacity-100 scale-100  -translate-y-[5%]' : 'opacity-0 pointer-events-none scale-50',
           ]"
           content-class="h-full !p-4" @click="openFinanceCard = false"
         >
           <div class="flex h-full min-w-0 flex-col overflow-hidden">
             <div class="shrink-0 grid grid-cols-3 gap-1.5">
-              <div v-for="(item, index) in financeSummaryItems" :key="item.label" class="min-w-0">
+              <div v-for="item in financeSummaryItems" :key="item.label" class="min-w-0">
                 <div class="flex mb-1.5 items-center text-xs font-medium text-muted-foreground">
                   {{ item.label }}
                 </div>
-                <Transition v-bind="metricSwitchTransitionProps">
+                <Transition name="panel" mode="out-in">
                   <div
                     :key="`remaining-value-${summaryTransitionKey}-${exchangeRateBaseCurrency}`" class="flex min-w-0 items-baseline truncate"
-                    :style="getMetricSwitchStyle(index)"
                   >
                     <span class="shrink-0 text-xs mr-0.5 font-semibold leading-none text-muted-foreground">
                       {{ item.symbol }}
@@ -289,11 +270,11 @@ onMounted(async () => {
               </div>
               <div class="h-15 grid grid-cols-2 gap-y-1 gap-x-4 overflow-auto">
                 <div
-                  v-for="(row, index) in exchangeRateRows" :key="row.currency"
+                  v-for="row in exchangeRateRows" :key="row.currency"
                   class="text-[11px] flex items-center "
                 >
-                  <Transition v-bind="metricSwitchTransitionProps">
-                    <div :key="`remaining-value-${exchangeRateBaseCurrency}`" class="flex-1 flex justify-between" :style="getMetricSwitchStyle(index)">
+                  <Transition name="panel" mode="out-in">
+                    <div :key="`remaining-value-${exchangeRateBaseCurrency}`" class="flex-1 flex justify-between">
                       <span class="text-muted-foreground">
                         {{ row.currency }}
                       </span>
@@ -310,9 +291,8 @@ onMounted(async () => {
       </div>
       <CardX
         hoverable
-        class="group h-full border-none rounded-md transition-all"
+        class="group h-full border-none rounded-md transition-colors bg-background/60 hover:bg-background"
         :class="[
-          pickSurfaceClass('bg-background/60 hover:bg-background', 'bg-background/50 hover:bg-background backdrop-blur-xs'),
           showVisualPanel ? 'col-span-4 row-span-1 col-start-9 row-start-1' : 'col-span-1 row-start-1 col-start-3 min-h-18 md:min-h-24',
         ]"
         content-class="h-full !p-3"
@@ -330,10 +310,9 @@ onMounted(async () => {
             :content="`↑ ${formattedTrafficUp.value} ${formattedTrafficUp.unit}\n↓ ${formattedTrafficDown.value} ${formattedTrafficDown.unit}`"
             class="min-w-0" content-class="whitespace-pre px-2 py-1 left-0 -translate-x-0 leading-normal"
           >
-            <Transition v-bind="metricSwitchTransitionProps">
+            <Transition name="panel" mode="out-in">
               <div
                 :key="`traffic-${summaryTransitionKey}`" class="flex items-baseline gap-1"
-                :style="getMetricSwitchStyle(3)"
               >
                 <span class="inline-block text-md md:text-2xl font-bold leading-none tracking-tight">
                   {{ totalTrafficTooltip.value }}
@@ -349,9 +328,8 @@ onMounted(async () => {
 
       <CardX
         hoverable
-        class="group h-full border-none rounded-md transition-all"
+        class="group h-full border-none rounded-md transition-colors bg-background/60 hover:bg-background"
         :class="[
-          pickSurfaceClass('bg-background/60 hover:bg-background', 'bg-background/50 hover:bg-background backdrop-blur-xs'),
           showVisualPanel ? 'col-span-4 row-span-1 col-start-1 row-start-1' : 'col-span-1 row-start-1 col-start-1 min-h-18 md:min-h-24',
         ]"
         content-class="h-full !p-3"
@@ -364,10 +342,9 @@ onMounted(async () => {
               class="text-slate-500/20 group-hover:text-slate-500 transition-colors"
             />
           </div>
-          <Transition v-bind="metricSwitchTransitionProps">
+          <Transition name="panel" mode="out-in">
             <div
               :key="`speed-up-${summaryTransitionKey}`" class="flex items-baseline gap-1"
-              :style="getMetricSwitchStyle(4)"
             >
               <span class="text-md md:text-2xl font-bold leading-none tracking-tight">{{ formattedSpeedUp.value
               }}</span>
@@ -378,9 +355,8 @@ onMounted(async () => {
       </CardX>
       <CardX
         hoverable
-        class="group h-full border-none rounded-md transition-all"
+        class="group h-full border-none rounded-md transition-colors bg-background/60 hover:bg-background"
         :class="[
-          pickSurfaceClass('bg-background/60 hover:bg-background', 'bg-background/50 hover:bg-background backdrop-blur-xs'),
           showVisualPanel ? 'col-span-4 row-span-1 col-start-5 row-start-1' : 'col-span-1 row-start-1 col-start-2 min-h-18 md:min-h-24',
         ]"
         content-class="h-full !p-3"
@@ -393,10 +369,9 @@ onMounted(async () => {
               class="text-slate-500/20 group-hover:text-slate-500 transition-colors"
             />
           </div>
-          <Transition v-bind="metricSwitchTransitionProps">
+          <Transition name="panel" mode="out-in">
             <div
               :key="`speed-down-${summaryTransitionKey}`" class="flex items-baseline gap-1"
-              :style="getMetricSwitchStyle(5)"
             >
               <span class="text-md md:text-2xl font-bold leading-none tracking-tight">
                 {{ formattedSpeedDown.value }}
@@ -410,44 +385,3 @@ onMounted(async () => {
     </div>
   </div>
 </template>
-
-<style scoped>
-.metric-switch-enter-active,
-.metric-switch-leave-active {
-  transition:
-    opacity 160ms ease,
-    transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
-    filter 180ms ease;
-}
-
-.metric-switch-enter-active {
-  transition-delay: var(--metric-switch-delay, 0ms);
-}
-
-.metric-switch-enter-from {
-  opacity: 0;
-  transform: translateY(6px);
-  filter: blur(3px);
-}
-
-.metric-switch-leave-to {
-  opacity: 0;
-  transform: translateY(-4px);
-  filter: blur(2px);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .metric-switch-enter-active,
-  .metric-switch-leave-active {
-    transition: none;
-    transition-delay: 0ms;
-  }
-
-  .metric-switch-enter-from,
-  .metric-switch-leave-to {
-    opacity: 1;
-    transform: none;
-    filter: none;
-  }
-}
-</style>

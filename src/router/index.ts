@@ -1,18 +1,26 @@
+import { shallowRef } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
+import { loadCostRenewal, loadHome, loadIpqaDetail, loadNodeDetail } from './pageLoaders'
+import { createPageScroll, pageTransition } from './pageNavigation'
 import { loadResourceInsightsPage } from './resourceInsights'
+
+const pageScroll = createPageScroll()
+export const routeTransition = shallowRef('page-fade')
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
+  scrollBehavior: pageScroll.restore,
   routes: [
     {
       path: '/',
       name: 'home',
-      component: () => import('@/views/HomeView.vue'),
+      component: loadHome,
     },
     {
       path: '/instance/:id',
       name: 'instance-detail',
-      component: () => import('@/views/InstanceDetail.vue'),
+      component: loadNodeDetail,
+      props: true,
     },
     {
       path: '/resource-insights',
@@ -22,14 +30,26 @@ const router = createRouter({
     {
       path: '/cost-renewal',
       name: 'cost-renewal',
-      component: () => import('@/features/cost-renewal/pages/CostRenewalPage.vue'),
+      component: loadCostRenewal,
     },
     {
       path: '/ip-quality/:uuid',
       name: 'ipqa-node-detail',
-      component: () => import('@/features/ipqa/pages/IpqaNodeDetailPage.vue'),
+      component: loadIpqaDetail,
+      props: route => ({
+        uuid: route.params.uuid,
+        archiveDate: typeof route.query.date === 'string' ? route.query.date : undefined,
+        fromInstance: route.query.from === 'instance',
+      }),
     },
   ],
+})
+
+router.afterEach((to, from, failure) => {
+  if (failure || to.path === from.path)
+    return
+  pageScroll.remember(from, window.scrollX, window.scrollY)
+  routeTransition.value = pageTransition(from, to)
 })
 
 export default router

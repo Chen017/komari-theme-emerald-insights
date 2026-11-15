@@ -2,13 +2,13 @@
 import type { CurrencyCode } from '@/utils/financeHelper'
 import { Icon } from '@iconify/vue'
 import { computed, defineAsyncComponent, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { CardX } from '@/components/ui/card-x'
 import { Empty } from '@/components/ui/empty'
-import { useBackgroundSurface } from '@/composables/useBackgroundSurface'
 import { useNodeFormatters } from '@/composables/useNodeFormatters'
+import IpqaSnapshotCard from '@/features/ipqa/components/IpqaSnapshotCard.vue'
 import { useAppStore } from '@/stores/app'
 import { useNodesStore } from '@/stores/nodes'
 import * as financeHelper from '@/utils/financeHelper'
@@ -17,30 +17,27 @@ import { getTrafficUsed } from '@/utils/nodeHelpers'
 import { getOSImage, getOSName } from '@/utils/osImageHelper'
 import { getFlagSrc, getRegionDisplayName } from '@/utils/regionHelper'
 import { getBillingCycleText, getExpireText, getExpireTextClass } from '@/utils/tagHelper'
-import IpqaSnapshotCard from '@/features/ipqa/components/IpqaSnapshotCard.vue'
 
+const props = defineProps<{ id: string }>()
 const LoadChart = defineAsyncComponent(() => import('@/components/LoadChart.vue'))
 const PingChart = defineAsyncComponent(() => import('@/components/PingChart.vue'))
 
-const route = useRoute()
 const router = useRouter()
 
 const appStore = useAppStore()
-const { pickSurfaceClass } = useBackgroundSurface()
 const nodesStore = useNodesStore()
 const { formatBytes, formatBytesPerSecond, formatUptime } = useNodeFormatters()
 const exchangeRates = ref(financeHelper.DEFAULT_EXCHANGE_RATES)
 const financeBaseCurrency = ref<CurrencyCode>('CNY')
 
 onMounted(async () => {
-  window.scrollTo({ top: 0, behavior: 'instant' })
   financeBaseCurrency.value = financeHelper.getStoredFinanceCurrency()
 
   const { rates } = await financeHelper.getDailyExchangeRates()
   exchangeRates.value = rates
 })
 
-const data = computed(() => nodesStore.nodes.find(node => node.uuid === route.params.id))
+const data = computed(() => nodesStore.nodes.find(node => node.uuid === props.id))
 
 interface InfoItem {
   label: string
@@ -227,8 +224,7 @@ const trafficProgressStyle = computed(() => ({
   <div class="instance-detail space-y-4">
     <div v-if="!data" class="p-4">
       <CardX
-        class="border-none transition-all rounded-md"
-        :class="pickSurfaceClass('bg-background/60 hover:bg-background', 'bg-background/50 hover:bg-background backdrop-blur-xs')"
+        class="border-none transition-colors rounded-md bg-background/60 hover:bg-background"
       >
         <Empty description="节点不存在或已被删除">
           <template #extra>
@@ -242,16 +238,16 @@ const trafficProgressStyle = computed(() => ({
 
     <template v-else>
       <div class="px-4 flex gap-4 items-center">
-        <Button variant="ghost" size="icon-sm" class="bg-background/50 hover:bg-background" @click="router.push('/')">
+        <Button variant="ghost" size="icon-sm" class="bg-background/50 hover:bg-background" aria-label="返回首页" @click="router.push('/')">
           <Icon icon="tabler:arrow-left" :width="16" :height="16" />
         </Button>
-        <div class="text-lg font-bold flex gap-2 items-center">
+        <h1 class="text-lg font-bold flex gap-2 items-center">
           <img
             :src="getFlagSrc(data.region)" :alt="getRegionDisplayName(data.region)"
             class="size-6"
           >
           <span>{{ data.name }}</span>
-        </div>
+        </h1>
         <Badge :variant="data.online ? 'default' : 'destructive'" class="text-xs !rounded">
           {{ data.online ? '在线' : '离线' }}
         </Badge>
@@ -260,8 +256,7 @@ const trafficProgressStyle = computed(() => ({
       <div class="px-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <CardX
           v-for="item in metricCards" :key="item.label" hoverable size="small"
-          class="group h-full border-none transition-all rounded-md"
-          :class="pickSurfaceClass('bg-background/60 hover:bg-background', 'bg-background/50 hover:bg-background backdrop-blur-xs')"
+          class="group h-full border-none transition-colors rounded-md bg-background/60 hover:bg-background"
           content-class="h-full !p-3"
         >
           <div class="flex h-full min-h-10 md:min-h-18 flex-col justify-between gap-3">
@@ -290,8 +285,7 @@ const trafficProgressStyle = computed(() => ({
       <div class="px-4 gap-4 grid grid-cols-1 lg:grid-cols-2">
         <CardX
           title="硬件信息" size="small"
-          class="group h-full border-none transition-all rounded-md"
-          :class="pickSurfaceClass('bg-background/60 hover:bg-background', 'bg-background/50 hover:bg-background backdrop-blur-xs')"
+          class="group h-full border-none transition-colors rounded-md bg-background/60 hover:bg-background"
         >
           <div class="gap-3 grid grid-cols-3">
             <div
@@ -309,8 +303,7 @@ const trafficProgressStyle = computed(() => ({
 
         <CardX
           title="系统信息" size="small"
-          class="group h-full border-none transition-all rounded-md"
-          :class="pickSurfaceClass('bg-background/60 hover:bg-background', 'bg-background/50 hover:bg-background backdrop-blur-xs')"
+          class="group h-full border-none transition-colors rounded-md bg-background/60 hover:bg-background"
         >
           <div class="gap-3 grid grid-cols-1 sm:grid-cols-2">
             <div
@@ -336,8 +329,7 @@ const trafficProgressStyle = computed(() => ({
 
         <CardX
           title="存储信息" size="small"
-          class="group h-full border-none transition-all rounded-md"
-          :class="pickSurfaceClass('bg-background/60 hover:bg-background', 'bg-background/50 hover:bg-background backdrop-blur-xs')"
+          class="group h-full border-none transition-colors rounded-md bg-background/60 hover:bg-background"
         >
           <div class="gap-3 grid grid-cols-3">
             <div
@@ -355,8 +347,7 @@ const trafficProgressStyle = computed(() => ({
 
         <CardX
           title="网络信息" size="small"
-          class="group h-full border-none transition-all rounded-md"
-          :class="pickSurfaceClass('bg-background/60 hover:bg-background', 'bg-background/50 hover:bg-background backdrop-blur-xs')"
+          class="group h-full border-none transition-colors rounded-md bg-background/60 hover:bg-background"
           content-class="pt-0"
         >
           <div class="gap-3 grid grid-cols-2">

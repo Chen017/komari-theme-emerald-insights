@@ -1,26 +1,26 @@
 <script setup lang="ts">
 import { Icon } from '@iconify/vue'
 import dayjs from 'dayjs'
-import { computed, onMounted, ref, shallowRef, watch } from 'vue'
-import VChart from 'vue-echarts'
+import { computed, ref, shallowRef, watch } from 'vue'
+import { ChartCanvas, preloadChartCanvas } from '@/components/chartCanvas'
 import { Button } from '@/components/ui/button'
 import { DataTooltip } from '@/components/ui/data-tooltip'
 import { Empty } from '@/components/ui/empty'
 import { Spinner } from '@/components/ui/spinner'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { useBackgroundSurface } from '@/composables/useBackgroundSurface'
 import { useAppStore } from '@/stores/app'
 import { createPingSeries, smoothPingChartRows } from '@/utils/pingChartSeries'
 import { getSharedRpc, RpcError } from '@/utils/rpc'
-import '@/utils/echarts' // 共享 ECharts 配置
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   uuid: string
   initialTaskId?: number
-}>()
+  active?: boolean
+}>(), {
+  active: true,
+})
 
 const appStore = useAppStore()
-const { pickSurfaceClass } = useBackgroundSurface()
 const isDark = computed(() => appStore.isDark)
 // 使用共享的 RPC 实例，避免重复创建连接
 const rpc = getSharedRpc()
@@ -202,7 +202,6 @@ const lossRecordsData = shallowRef<LossRecord[]>([])
 const tasks = shallowRef<TaskInfo[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
-let fetchRequestId = 0
 let metricRpcSupported: boolean | null = null
 
 // 任务选择
@@ -284,7 +283,7 @@ function pushLatencyMetricPoint(
   })
 }
 
-async function fetchMetricRecords(uuid: string, hours: number): Promise<PingChartData> {
+async function fetchMetricRecords(uuid: string, hours: number, signal: AbortSignal): Promise<PingChartData> {
   const [metricResult, statsResult, lossResult] = await Promise.all([
     rpc.getClient().call<MetricQueryResponse>('public:queryMetrics', {
       // 与官方主题一致：延迟曲线只吃 ping.latency_ms；丢包率走 getPingMetricStats
@@ -295,13 +294,13 @@ async function fetchMetricRecords(uuid: string, hours: number): Promise<PingChar
       aggregation: 'avg',
       // 官方默认开启：空桶补 null，并把 latency=-1 规范为 null
       fill_empty: true,
-    }),
+    }, { signal }),
     rpc.getClient().call<PingMetricStatsResponse>('public:getPingMetricStats', {
       entity_id: uuid,
       uuid,
       hours,
       max_points: HISTORY_MAX_POINTS,
-    }),
+    }, { signal }),
     // 独立拉取 ping.loss 时序数据，仅供丢包标记与比例绘制使用，不污染延迟曲线
     rpc.getClient().call<MetricQueryResponse>('public:queryMetrics', {
       metric_keys: ['ping.loss'],
@@ -310,7 +309,7 @@ async function fetchMetricRecords(uuid: string, hours: number): Promise<PingChar
       max_points: HISTORY_MAX_POINTS,
       aggregation: 'avg',
       fill_empty: true,
-    }).catch(() => null),
+    }, { signal }).catch(() => null),
   ])
 
   const records: PingRecord[] = []
@@ -374,12 +373,12 @@ async function fetchMetricRecords(uuid: string, hours: number): Promise<PingChar
   return { records, tasks: metricTasks, lossRecords }
 }
 
-async function fetchLegacyRecords(uuid: string, hours: number): Promise<PingChartData> {
+async function fetchLegacyRecords(uuid: string, hours: number, signal: AbortSignal): Promise<PingChartData> {
   const result = await rpc.getClient().call<PingRecordsResponse>('common:getRecords', {
     type: 'ping',
     uuid,
     hours,
-  })
+  }, { signal })
 
   return {
     records: result?.records ?? [],
@@ -387,37 +386,31 @@ async function fetchLegacyRecords(uuid: string, hours: number): Promise<PingChar
   }
 }
 
-async function fetchRecords() {
-  if (!props.uuid)
-    return
-
-  const requestId = ++fetchRequestId
-  const uuid = props.uuid
-  const hours = selectedHours.value
-
+async function fetchRecords(uuid: string, hours: number, signal: AbortSignal) {
   loading.value = true
   error.value = null
 
   try {
     let result: PingChartData
     if (metricRpcSupported === false) {
-      result = await fetchLegacyRecords(uuid, hours)
+      result = await fetchLegacyRecords(uuid, hours, signal)
     }
     else {
       try {
-        result = await fetchMetricRecords(uuid, hours)
+        result = await fetchMetricRecords(uuid, hours, signal)
+        signal.throwIfAborted()
         metricRpcSupported = true
       }
       catch (err) {
-        if (!isMethodNotFoundError(err))
+        if (signal.aborted || !isMethodNotFoundError(err))
           throw err
 
         metricRpcSupported = false
-        result = await fetchLegacyRecords(uuid, hours)
+        result = await fetchLegacyRecords(uuid, hours, signal)
       }
     }
 
-    if (requestId !== fetchRequestId)
+    if (signal.aborted)
       return
 
     const records = result.records
@@ -435,7 +428,7 @@ async function fetchRecords() {
     }
   }
   catch (err) {
-    if (requestId !== fetchRequestId)
+    if (signal.aborted)
       return
 
     error.value = err instanceof Error ? err.message : '获取数据失败'
@@ -444,7 +437,7 @@ async function fetchRecords() {
     tasks.value = []
   }
   finally {
-    if (requestId === fetchRequestId) {
+    if (!signal.aborted) {
       loading.value = false
     }
   }
@@ -1012,7 +1005,7 @@ const pingChartOption = computed(() => {
               left: 'center',
               top: '76%',
               style: {
-                text: '✓ 当前时段无丢包 · 网络质量优异',
+                text: '当前时段无丢包',
                 fill: isDark.value ? 'rgba(52, 211, 153, 0.65)' : 'rgba(16, 185, 129, 0.75)',
                 fontSize: 11,
                 fontWeight: 500,
@@ -1124,26 +1117,25 @@ const pingChartOption = computed(() => {
 
 // ==================== 生命周期 ====================
 
-watch(selectedView, () => {
-  selectedTaskIds.value = []
-  fetchRecords()
-})
+watch(
+  [() => props.uuid, selectedHours, () => props.active],
+  ([uuid, hours, active], [previousUuid], onCleanup) => {
+    if (!active || !uuid)
+      return
 
-watch(() => props.uuid, () => {
-  remoteData.value = []
-  lossRecordsData.value = []
-  tasks.value = []
-  selectedTaskIds.value = []
-  fetchRecords()
-})
-
-onMounted(() => {
-  const firstView = availableViews.value[0]
-  if (firstView && !selectedView.value) {
-    selectedView.value = firstView.label
-  }
-  fetchRecords()
-})
+    if (uuid !== previousUuid) {
+      remoteData.value = []
+      lossRecordsData.value = []
+      tasks.value = []
+    }
+    selectedTaskIds.value = []
+    const controller = new AbortController()
+    onCleanup(() => controller.abort())
+    preloadChartCanvas()
+    void fetchRecords(uuid, hours, controller.signal)
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
@@ -1151,7 +1143,7 @@ onMounted(() => {
     <!-- 时间选择器 -->
     <Tabs v-model="selectedView" class="w-full items-center">
       <div class="min-w-0 flex-1 overflow-x-auto pointer-events-auto">
-        <TabsList :class="pickSurfaceClass('w-max h-8 bg-background/60 rounded-md', 'w-max h-8 bg-background/50 backdrop-blur-xl rounded-md')">
+        <TabsList class="w-max h-8 bg-background/60 rounded-md">
           <TabsTrigger
             v-for="view in availableViews" :key="view.label" :value="view.label"
             class="h-6.5 flex-none shrink-0 text-xs border-none data-[state=active]:text-emerald-600 shadow-none rounded-sm"
@@ -1300,7 +1292,7 @@ onMounted(() => {
             <DataTooltip
               content="使用 EWMA 算法平滑数据并过滤突变值"
               placement="top"
-              :content-class="pickSurfaceClass('whitespace-nowrap text-[11px]', 'whitespace-nowrap text-[11px] backdrop-blur-xl')"
+              content-class="whitespace-nowrap text-[11px]"
             >
               <Button variant="ghost" size="icon-xs" class="text-slate-500">
                 <Icon icon="carbon:information" :width="14" :height="14" />
@@ -1311,13 +1303,12 @@ onMounted(() => {
 
         <!-- 图表 -->
         <div
-          class="rounded-md p-4 transition-all"
+          class="rounded-md p-4 transition-colors bg-background/60 hover:bg-background"
           :class="[
             showLoss ? 'h-96' : 'h-80',
-            pickSurfaceClass('bg-background/60 hover:bg-background', 'bg-background/50 hover:bg-background backdrop-blur-xl'),
           ]"
         >
-          <VChart :option="pingChartOption" autoresize />
+          <ChartCanvas :option="pingChartOption" class="size-full" />
         </div>
       </template>
     </Spinner>
