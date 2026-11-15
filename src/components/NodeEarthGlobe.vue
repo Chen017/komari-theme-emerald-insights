@@ -478,10 +478,6 @@ function onPointerUp(e: PointerEvent) {
   syncRafState()
 }
 
-const totalServers = computed(() => displayNodes.value.length)
-const onlineServers = computed(() => displayNodes.value.filter(node => node.online).length)
-const offlineServers = computed(() => totalServers.value - onlineServers.value)
-
 function rateFor(code: string): RegionRate {
   return regionRates.value.get(code) ?? { up: 0, down: 0 }
 }
@@ -493,7 +489,7 @@ function formatRate(bytesPerSec: number): string {
 </script>
 
 <template>
-  <div ref="containerRef" class="relative aspect-square w-full max-w-md mx-auto -translate-y-9 md:-translate-y-15">
+  <div ref="containerRef" class="relative aspect-square w-full max-w-md mx-auto -translate-y-18 md:-translate-y-24">
     <canvas
       ref="canvasRef"
       class="earth-globe-canvas absolute inset-0 w-full h-full select-none touch-none cursor-grab active:cursor-grabbing"
@@ -519,24 +515,6 @@ function formatRate(bytesPerSec: number): string {
         </div>
       </div>
     </template>
-
-    <div
-      v-if="totalServers > 0"
-      class="absolute top-6 md:top-12 left-0 text-[10px] text-muted-foreground pointer-events-none flex gap-2 items-center backdrop-blur-lg bg-background/60 rounded px-2 py-0.5"
-    >
-      <div v-if="onlineServers > 0" class="flex items-center gap-1">
-        <span class="inline-block size-1.5 rounded-full bg-green-600 animate-pulse" />
-        <span class="text-green-600">{{ onlineServers }}</span>
-      </div>
-      <div v-if="offlineServers > 0" class="flex items-center gap-1">
-        <span class="inline-block size-1.5 rounded-full bg-yellow-600 animate-pulse" />
-        <span class="text-yellow-600">{{ offlineServers }}</span>
-      </div>
-      <!-- <div v-if="totalServers > 0" class="flex items-center gap-1">
-        <span class="inline-block size-1.5 rounded-full bg-blue-600 animate-pulse" />
-        <span class="text-blue-600">{{ totalServers }}</span>
-      </div> -->
-    </div>
   </div>
 </template>
 
