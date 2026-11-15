@@ -10,8 +10,10 @@ it('retains ping stats through live node updates while still switching nodes and
   resetSharedRpc()
   const rpc = getSharedRpc()
   let calls = 0
-  rpc.getClient().call = async () => {
+  rpc.getClient().call = async (method) => {
     calls++
+    if (method === 'public:getPublicPingTasks')
+      return [{ id: 1, name: 'Ping', clients: ['a'] }] as any
     return { records: [{ client: 'a', task_id: 1, time: '2026-10-28T00:00:00Z', value: 35 }], tasks: [{ id: 1, name: 'Ping' }] } as any
   }
   const node = ref({ uuid: 'a', cpu: 10 })
@@ -19,8 +21,7 @@ it('retains ping stats through live node updates while still switching nodes and
   const scope = effectScope()
   try {
     const state = scope.run(() => useNodePingStats(() => node.value.uuid, { hours: 1, enabled }))!
-    await nextTick()
-    await nextTick()
+    await new Promise(resolve => setImmediate(resolve))
     const first = state.stats.value
     assert.equal(first.avgLatency, 35)
     for (let i = 0; i < 10; i++) {
@@ -28,7 +29,7 @@ it('retains ping stats through live node updates while still switching nodes and
       await nextTick()
       assert.equal(state.stats.value, first)
     }
-    assert.equal(calls, 1)
+    assert.equal(calls, 2)
     node.value = { uuid: 'b', cpu: 0 }
     await nextTick()
     assert.equal(state.stats.value.hasData, false)

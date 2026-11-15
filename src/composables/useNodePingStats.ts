@@ -33,6 +33,7 @@ interface SharedPingRecordsResponse {
 interface PingTaskInfo {
   id: number
   name: string
+  clients?: string[] | null
 }
 
 interface SharedPingRecordsState {
@@ -54,11 +55,12 @@ export interface NodePingPerTaskStat {
   taskId: number
   name: string
   avgLatency: number
-  loss: number
+  loss: number | null
+  history: NodePingHistoryPoint[]
 }
 
 export const NODE_PING_BAR_COUNT = 10
-const CACHE_VERSION = 7
+const CACHE_VERSION = 8
 const CACHE_KEY_PREFIX = 'komari-theme-emerald:node-ping-stats'
 const FULL_LOSS_EPSILON = 1e-6
 const PING_RECORD_REFRESH_INTERVAL_MS = 60_000
@@ -144,6 +146,7 @@ function isValidStatsState(value: unknown): value is NodePingStatsState {
     && Array.isArray(state.history)
     && state.history.every(isValidHistoryPoint)
     && Array.isArray(state.perTaskStats)
+    && state.perTaskStats.every(task => task && Array.isArray(task.history) && task.history.every(isValidHistoryPoint))
 }
 
 function readStatsCache(uuid: string, hours: number): NodePingStatsState | null {
@@ -237,15 +240,18 @@ async function loadSharedPingRecords(entry: SharedPingRecordsEntry, hours: numbe
 
   entry.promise = (async () => {
     try {
-      const result = await rpc.getClient().call<SharedPingRecordsResponse>('common:getRecords', {
-        type: 'ping',
-        // 新版 getRecords 可能只返回近期可用样本，hours 仅作为服务端查询窗口。
-        hours,
-      })
+      const [result, publicTasks] = await Promise.all([
+        rpc.getClient().call<SharedPingRecordsResponse>('common:getRecords', {
+          type: 'ping',
+          // 新版 getRecords 可能只返回近期可用样本，hours 仅作为服务端查询窗口。
+          hours,
+        }),
+        rpc.getPublicPingTasks().catch(() => null),
+      ])
 
       entry.data.value = {
         recordsByClient: buildRecordsByClient(result?.records ?? []),
-        tasks: result?.tasks ?? [],
+        tasks: Array.isArray(publicTasks) ? publicTasks : result?.tasks ?? [],
       }
       entry.lastFetchedAt = Date.now()
     }
@@ -355,12 +361,17 @@ function getPercentile(values: number[], percentile: number): number | null {
   return lowerValue + (upperValue - lowerValue) * (position - lowerIndex)
 }
 
-export function buildStats(records: PingRecord[], tasks: PingTaskInfo[]): NodePingStatsState {
+export function buildStats(records: PingRecord[], tasks: PingTaskInfo[], uuid?: string): NodePingStatsState {
+  const assignedTasks = uuid ? tasks.filter(task => task.clients?.includes(uuid)) : []
+  const assignmentsKnown = Boolean(uuid) && tasks.length > 0 && tasks.every(task => task.clients !== undefined)
+  const assignedIds = new Set(assignedTasks.map(task => task.id))
+
   // -1 is an actual failed probe; other negative sentinels are missing observations.
-  records = records.filter(record => Number.isFinite(record.value) && record.value >= -1)
+  records = records.filter(record => Number.isFinite(record.value) && record.value >= -1
+    && (!assignmentsKnown || assignedIds.has(record.task_id)))
   const includedTaskIds = getIncludedTaskIds(records)
 
-  if (!includedTaskIds.size)
+  if (!includedTaskIds.size && !assignedIds.size)
     return createEmptyStats()
 
   const filteredRecords = records.filter(record => includedTaskIds.has(record.task_id))
@@ -372,12 +383,19 @@ export function buildStats(records: PingRecord[], tasks: PingTaskInfo[]): NodePi
     currentRecords.push(record)
     taskRecords.set(record.task_id, currentRecords)
   }
+  for (const taskId of assignedIds) {
+    if (!taskRecords.has(taskId))
+      taskRecords.set(taskId, [])
+  }
 
   const latencyValues: number[] = []
   const taskLossValues: number[] = []
   const volatilityValues: number[] = []
 
   for (const recordsByTask of taskRecords.values()) {
+    if (!recordsByTask.length)
+      continue
+
     const validValues = recordsByTask
       .map(record => record.value)
       .filter(value => value >= 0)
@@ -418,11 +436,11 @@ export function buildStats(records: PingRecord[], tasks: PingTaskInfo[]): NodePi
     const avgLatency = validValues.length ? average(validValues) : -1
     const loss = taskRecs.length
       ? (taskRecs.length - validValues.length) / taskRecs.length * 100
-      : 100
+      : null
     const name = taskNameMap.get(taskId) ?? `Ping ${taskId}`
-    return { taskId, name, avgLatency, loss }
+    return { taskId, name, avgLatency, loss, history: buildPingHistory(taskRecs) }
   })
-    .sort((a, b) => (taskOrderMap.get(a.taskId) ?? 0) - (taskOrderMap.get(b.taskId) ?? 0))
+    .sort((a, b) => (taskOrderMap.get(a.taskId) ?? Infinity) - (taskOrderMap.get(b.taskId) ?? Infinity) || a.taskId - b.taskId)
 
   return {
     avgLatency,
@@ -491,7 +509,7 @@ export function useNodePingStats(
       return readStatsCache(nodeUuid, hours) ?? createEmptyStats()
 
     const records = state.recordsByClient.get(nodeUuid) ?? []
-    return records.length ? buildStats(records, state.tasks) : createEmptyStats()
+    return buildStats(records, state.tasks, nodeUuid)
   })
 
   // 副作用：按需触发首次共享加载并维护 loading/error，不再命令式写入 stats。

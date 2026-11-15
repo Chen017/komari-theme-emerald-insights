@@ -2,32 +2,44 @@
 import type { NodeData } from '@/stores/nodes'
 import { Icon } from '@iconify/vue'
 import { computed } from 'vue'
+import NodePingPanels from '@/components/NodePingPanels.vue'
 import { Badge } from '@/components/ui/badge'
 import { CardX } from '@/components/ui/card-x'
 import { DataTooltip } from '@/components/ui/data-tooltip'
 import { ProgressThin } from '@/components/ui/progress-thin'
 import { useBackgroundSurface } from '@/composables/useBackgroundSurface'
 import { useNodeFormatters } from '@/composables/useNodeFormatters'
-import { useNodePingDisplay } from '@/composables/useNodePingDisplay'
 import { useAppStore } from '@/stores/app'
 import { formatDateTime, getStatus } from '@/utils/helper'
-import { getCustomTags, getDiskPercentage, getMemPercentage, getNodeTagDisplay, getPriceTags, getRemainingTimeTagClass, getTrafficUsed, getTrafficUsedPercentage, hasRegion, showTrafficProgress } from '@/utils/nodeHelpers'
+import { getDiskPercentage, getMemPercentage, getNodeTagDisplay, getTrafficUsed, getTrafficUsedPercentage, hasRegion, showTrafficProgress } from '@/utils/nodeHelpers'
 import { getOSImage, getOSName } from '@/utils/osImageHelper'
 import { getFlagSrc, getRegionDisplayName } from '@/utils/regionHelper'
+import { getExpireStatus, getExpireText, getExpireTextClass } from '@/utils/tagHelper'
 
 const props = defineProps<{ node: NodeData }>()
 
 const emit = defineEmits<{
   click: []
-  pingClick: [node: NodeData]
+  pingClick: [node: NodeData, taskId: number]
 }>()
 
 const appStore = useAppStore()
 const { pickSurfaceClass } = useBackgroundSurface()
-const { formatBytes, formatBytesPerSecond, formatUptime } = useNodeFormatters()
+const { formatBytes, formatBytesPerSecond } = useNodeFormatters()
 
 const offlineTime = computed(() => formatDateTime(props.node.time))
-const expiredDate = computed(() => formatDateTime(props.node.expired_at, 'YYYY-MM-DD'))
+const renewal = computed(() => {
+  const expiry = props.node.expired_at
+  if (!(new Date(expiry).getUTCFullYear() > 1))
+    return null
+
+  const status = getExpireStatus(expiry)
+  const text = getExpireText(expiry, appStore.lang)
+  const remaining = status === 'expired' || status === 'long_term'
+    ? text
+    : appStore.lang === 'zh-CN' ? `剩余 ${text}` : `${text} left`
+  return { remaining, date: formatDateTime(expiry, 'YYYY-MM-DD'), tone: getExpireTextClass(expiry) }
+})
 
 const cpuStatus = computed(() => getStatus(props.node.cpu ?? 0))
 const memPercentage = computed(() => getMemPercentage(props.node))
@@ -35,25 +47,9 @@ const memStatus = computed(() => getStatus(memPercentage.value))
 const diskPercentage = computed(() => getDiskPercentage(props.node))
 const diskStatus = computed(() => getStatus(diskPercentage.value))
 
-const {
-  latencyRenderBars,
-  lossRenderBars,
-  latencyDisplay,
-  lossDisplay,
-  latencyPanelTooltip,
-  lossPanelTooltip,
-  topPingNetworks,
-} = useNodePingDisplay(() => props.node.uuid)
-
 const trafficUsedPercentage = computed(() => getTrafficUsedPercentage(props.node))
 const trafficUsed = computed(() => getTrafficUsed(props.node))
-const priceTags = computed(() => getPriceTags(props.node, appStore.lang))
-const remainingTimeTagClass = computed(() => getRemainingTimeTagClass(props.node))
 const tagDisplay = computed(() => getNodeTagDisplay(props.node, appStore.lang))
-
-function openPingDialog() {
-  emit('pingClick', props.node)
-}
 </script>
 
 <template>
@@ -93,7 +89,8 @@ function openPingDialog() {
           <!-- CPU -->
           <div class="flex flex-col gap-1">
             <div class="w-full text-xs flex flex-row justify-between">
-              <span class="text-muted-foreground">
+              <span class="flex items-center gap-1 text-muted-foreground">
+                <Icon icon="lucide:cpu" class="size-3.5 text-sky-600 dark:text-sky-400" aria-hidden="true" />
                 CPU
               </span>
               <span>{{ (props.node.cpu ?? 0).toFixed(1) }}%</span>
@@ -108,7 +105,8 @@ function openPingDialog() {
           <!-- 内存 -->
           <div class="flex flex-col gap-1">
             <div class="w-full text-xs flex flex-row justify-between">
-              <span class="text-muted-foreground">
+              <span class="flex items-center gap-1 text-muted-foreground">
+                <Icon icon="lucide:memory-stick" class="size-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
                 内存
               </span>
               <span>{{ memPercentage.toFixed(1) }}%</span>
@@ -130,7 +128,8 @@ function openPingDialog() {
           <!-- 硬盘 -->
           <div class="flex flex-col gap-1">
             <div class="w-full text-xs flex flex-row justify-between">
-              <span class="text-muted-foreground">
+              <span class="flex items-center gap-1 text-muted-foreground">
+                <Icon icon="lucide:hard-drive" class="size-3.5 text-amber-600 dark:text-amber-400" aria-hidden="true" />
                 硬盘
               </span>
               <span>{{ diskPercentage.toFixed(1) }}%</span>
@@ -144,167 +143,67 @@ function openPingDialog() {
           <!-- 流量进度条 -->
           <div class="flex flex-col gap-1">
             <div class="w-full text-xs flex flex-row justify-between">
-              <span class="text-muted-foreground">
+              <span class="flex items-center gap-1 text-muted-foreground">
+                <Icon icon="lucide:arrow-down-up" class="size-3.5 text-violet-600 dark:text-violet-400" aria-hidden="true" />
                 流量
               </span>
               <span>{{ trafficUsedPercentage.toFixed(1) }}%</span>
             </div>
             <ProgressThin :percentage="trafficUsedPercentage" status="success" :height="4" />
-            <DataTooltip placement="top" class="block">
-              <div class="whitespace-pre-wrap text-[11px] text-muted-foreground truncate">
-                {{ formatBytes(trafficUsed) }} /
-                <template v-if="showTrafficProgress(props.node)">
-                  {{ formatBytes(props.node.traffic_limit) }}
-                </template>
-                <template v-else>
-                  ∞
-                </template>
-              </div>
-              <template #content>
-                <div class="flex items-center justify-between gap-3 whitespace-nowrap">
-                  <div class="text-[11px] flex flex-col">
-                    <div class="flex flex-row items-center gap-1">
-                      <Icon icon="tabler:chevron-up" width="12" height="12" />
-                      {{ formatBytes(props.node.net_total_up ?? 0) }}
-                    </div>
-                    <div class="flex flex-row items-center gap-1">
-                      <Icon icon="tabler:chevron-down" width="12" height="12" />
-                      {{ formatBytes(props.node.net_total_down ?? 0) }}
-                    </div>
-                  </div>
-                </div>
-              </template>
-            </DataTooltip>
+            <div class="truncate text-[11px] text-muted-foreground">
+              {{ formatBytes(trafficUsed) }} /
+              {{ showTrafficProgress(props.node) ? formatBytes(props.node.traffic_limit) : '∞' }}
+            </div>
           </div>
         </div>
-        <div class="relative text-[11px] text-muted-foreground">
+
+        <div class="relative">
           <div
             v-if="!props.node.online"
-            class="absolute inset-0 z-10 flex flex-col items-center justify-center space-y-1"
+            class="absolute inset-0 z-10 flex flex-col items-center justify-center text-[11px] text-muted-foreground"
           >
-            <span class="text-sm text-red-600">离线</span>
-            <div>{{ offlineTime }}</div>
+            <span class="text-sm text-destructive">离线</span>
+            <span>{{ offlineTime }}</span>
           </div>
-          <div class="flex flex-col gap-y-2" :class="[!props.node.online && 'blur-xs opacity-60 pointer-events-none']">
-            <div class="flex items-center">
-              <span class="truncate">
-                速率
-              </span>
-              <div class="border-t-2 border-dotted border-gray-500/10 mx-2 flex-1" />
-              <div class="truncate flex flex-row gap-1">
-                <div class="text-green-600 flex flex-row items-center gap-1">
-                  <Icon icon="tabler:chevron-up" width="12" height="12" />
-                  {{ formatBytesPerSecond(props.node.net_out ?? 0) }}
-                </div>
-                <div class="text-blue-600 flex flex-row items-center gap-1">
-                  <Icon icon="tabler:chevron-down" width="12" height="12" />
-                  {{ formatBytesPerSecond(props.node.net_in ?? 0) }}
-                </div>
+          <div
+            class="grid grid-cols-3 gap-1.5 text-[11px] tabular-nums"
+            :class="!props.node.online && 'pointer-events-none blur-xs opacity-60'"
+            :aria-hidden="!props.node.online || undefined"
+          >
+            <div class="min-w-0 space-y-0.5 rounded-lg bg-muted/65 px-1.5 py-1.5 dark:bg-muted/55 sm:px-2" aria-label="实时速率">
+              <div class="flex items-center gap-0.5 whitespace-nowrap text-emerald-700 dark:text-emerald-400">
+                <Icon icon="lucide:chevron-up" class="size-3 shrink-0" aria-hidden="true" />
+                <span class="truncate" :title="formatBytesPerSecond(props.node.net_out ?? 0)">{{ formatBytesPerSecond(props.node.net_out ?? 0) }}</span>
+              </div>
+              <div class="flex items-center gap-0.5 whitespace-nowrap text-blue-700 dark:text-blue-400">
+                <Icon icon="lucide:chevron-down" class="size-3 shrink-0" aria-hidden="true" />
+                <span class="truncate" :title="formatBytesPerSecond(props.node.net_in ?? 0)">{{ formatBytesPerSecond(props.node.net_in ?? 0) }}</span>
               </div>
             </div>
-            <div class="flex items-center justify-between">
-              <span class="truncate">
-                在线
-              </span>
-              <div class="border-t-2 border-dotted border-gray-500/10 mx-2 flex-1" />
-              <span class="truncate">
-                {{ props.node.uptime > 0 ? formatUptime(props.node.uptime) : '' }}
-              </span>
-            </div>
-            <div class="flex items-center justify-between">
-              <span class="truncate">
-                费用
-              </span>
-              <div class="border-t-2 border-dotted border-gray-500/10 mx-2 flex-1" />
-              <DataTooltip placement="left" :content="expiredDate" content-class="whitespace-nowrap right-0 mr-0">
-                <span class="truncate flex flex-row gap-1">
-                  <template v-for="(tag, index) in priceTags" :key="tag.text">
-                    <span class="inline-flex flex-row gap-1 items-center">
-                      <span :class="tag.highlight ? remainingTimeTagClass : ''">{{ tag.text }}</span>
-                    </span>
-                    <span v-if="index < priceTags.length - 1">·</span>
-                  </template>
-                </span>
-              </DataTooltip>
-            </div>
-            <div class="flex items-center justify-between">
-              <span class="truncate">
-                三网
-              </span>
-              <div class="border-t-2 border-dotted border-gray-500/10 mx-2 flex-1" />
-              <div v-if="topPingNetworks.length > 0" class="flex flex-row">
-                <DataTooltip
-                  v-for="(net, index) in topPingNetworks" :key="net.name" placement="top"
-                  :content="`${net.name}\n${net.latency}`" content-class="whitespace-pre-wrap w-max px-1.5 !leading-[1.2] text-[11px]"
-                >
-                  <div class="truncate">
-                    <span v-if="index" class="mx-1">·</span>
-                    <span :class="net.toneClass">{{ net.latency }}</span>
-                  </div>
-                </DataTooltip>
+            <div class="min-w-0 space-y-0.5 rounded-lg bg-muted/65 px-1.5 py-1.5 dark:bg-muted/55 sm:px-2" aria-label="累计流量">
+              <div class="flex items-center gap-0.5 whitespace-nowrap">
+                <Icon icon="lucide:upload" class="size-3 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <span class="truncate" :title="formatBytes(props.node.net_total_up ?? 0)">{{ formatBytes(props.node.net_total_up ?? 0) }}</span>
               </div>
-              <div v-else class="truncate">
-                N/A
+              <div class="flex items-center gap-0.5 whitespace-nowrap">
+                <Icon icon="lucide:download" class="size-3 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <span class="truncate" :title="formatBytes(props.node.net_total_down ?? 0)">{{ formatBytes(props.node.net_total_down ?? 0) }}</span>
               </div>
             </div>
-            <div class="grid grid-cols-6 gap-x-3">
-              <!-- 延迟 -->
-              <div
-                role="button" tabindex="0"
-                class="group/panel relative col-span-3 flex h-6 cursor-pointer flex-col gap-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                :title="latencyPanelTooltip" :aria-label="`${props.node.name} 延迟`" @click.stop="openPingDialog"
-                @keydown.enter.stop.prevent="openPingDialog" @keydown.space.stop.prevent="openPingDialog"
-              >
-                <div class="flex items-center justify-between text-[11px] leading-none relative">
-                  <span class="text-muted-foreground">延迟</span>
-                  <div class="border-t-2 border-dotted border-gray-500/10 mx-2 flex-1" />
-                  <span class="font-medium text-foreground/85">{{ latencyDisplay }}</span>
-                </div>
-                <div
-                  class="grid h-full items-end gap-[1px]"
-                  :style="{ gridTemplateColumns: `repeat(${latencyRenderBars.length}, minmax(0, 1fr))` }"
-                >
-                  <DataTooltip
-                    v-for="bar in latencyRenderBars" :key="bar.key" placement="top" :content="bar.tooltip"
-                    class="h-full w-full" content-class="whitespace-pre-wrap w-max px-1.5 !leading-[1.2] text-[11px]"
-                  >
-                    <span
-                      class="block h-full w-full rounded-[1px] transition-transform duration-150 group-hover/data-tooltip:scale-y-200"
-                      :class="bar.className"
-                    />
-                  </DataTooltip>
-                </div>
+            <div class="min-w-0 space-y-0.5 rounded-lg bg-muted/65 px-1.5 py-1.5 dark:bg-muted/55 sm:px-2" aria-label="续费信息">
+              <div class="flex items-center gap-0.5 whitespace-nowrap" :class="renewal?.tone">
+                <Icon icon="lucide:calendar-clock" class="size-3 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <span class="truncate" :title="renewal?.remaining">{{ renewal?.remaining ?? '未设到期' }}</span>
               </div>
-              <!-- 丢包 -->
-              <div
-                role="button" tabindex="0"
-                class="group/panel relative col-span-3 flex h-6 cursor-pointer flex-col gap-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                :title="lossPanelTooltip" :aria-label="`${props.node.name} 丢包`" @click.stop="openPingDialog"
-                @keydown.enter.stop.prevent="openPingDialog" @keydown.space.stop.prevent="openPingDialog"
-              >
-                <div class="flex items-center justify-between text-[11px] leading-none">
-                  <span class="text-muted-foreground">丢包</span>
-                  <div class="border-t-2 border-dotted border-gray-500/10 mx-2 flex-1" />
-                  <span class="font-medium text-foreground/85">{{ lossDisplay }}</span>
-                </div>
-                <div
-                  class="grid h-full items-end gap-[1px]"
-                  :style="{ gridTemplateColumns: `repeat(${lossRenderBars.length}, minmax(0, 1fr))` }"
-                >
-                  <DataTooltip
-                    v-for="bar in lossRenderBars" :key="bar.key" placement="top" :content="bar.tooltip"
-                    class="h-full w-full" content-class="whitespace-pre-wrap w-max px-1.5 !leading-[1.2] text-[11px]"
-                  >
-                    <span
-                      class="block h-full w-full rounded-[1px] transition-transform duration-150 group-hover/data-tooltip:scale-y-200"
-                      :class="bar.className"
-                    />
-                  </DataTooltip>
-                </div>
+              <div class="truncate whitespace-nowrap pl-3.5 text-muted-foreground" :title="renewal?.date">
+                {{ renewal?.date ?? '—' }}
               </div>
             </div>
           </div>
         </div>
+
+        <NodePingPanels :uuid="props.node.uuid" @select="emit('pingClick', props.node, $event)" />
+
         <div v-if="tagDisplay.customTags.length > 0 || tagDisplay.trafficResetTag" class="flex shrink-0 flex-wrap gap-1 items-center">
           <Badge
             v-for="(tag, index) in tagDisplay.customTags" :key="index" variant="outline"

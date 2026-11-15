@@ -3,6 +3,7 @@ import type { ByteDecimalsConfig } from '@/utils/helper'
 import { usePreferredDark, useStorageAsync } from '@vueuse/core'
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
+import { parseHomePingLineCount, parseHomePingTaskOrder } from '@/utils/homePingSettings'
 
 export type ThemeMode = 'auto' | 'light' | 'dark'
 type Lang = 'zh-CN' | 'en-US'
@@ -149,14 +150,17 @@ const useAppStore = defineStore('app', () => {
     return false
   })
 
-  // 计算属性：三网延迟显示节点顺序（未配置时返回空数组，保持默认排序）
+  const homePingLineCount = computed(() => parseHomePingLineCount(publicSettings.value?.theme_settings?.homePingLineCount))
+  const homePingTaskOrder = computed(() => parseHomePingTaskOrder(publicSettings.value?.theme_settings?.homePingTaskOrder))
+
+  // 兼容旧版主题按 Ping 任务名称排序的配置。
   const pingNetworkOrder = computed<string[]>(() => {
     const settings = publicSettings.value?.theme_settings
     const raw = settings && typeof settings.pingNetworkOrder === 'string' ? settings.pingNetworkOrder : ''
     const seen = new Set<string>()
     const names: string[] = []
 
-    for (const item of raw.split(',')) {
+    for (const item of raw.split(/[,，]/)) {
       const normalized = item.trim()
       if (!normalized || seen.has(normalized))
         continue
@@ -407,6 +411,8 @@ const useAppStore = defineStore('app', () => {
     hideAdminEntryWhenLoggedOut,
     disablePageAnimation,
     pingNetworkOrder,
+    homePingLineCount,
+    homePingTaskOrder,
     offlineNodesLast,
     icpEnabled,
     icpNumber,

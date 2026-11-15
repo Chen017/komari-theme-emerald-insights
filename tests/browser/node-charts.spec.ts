@@ -45,7 +45,7 @@ const rpcResults: Record<string, unknown> = {
 interface RpcRequest {
   id: number
   method: string
-  params?: { hours?: number, entity_id?: string, metric_keys?: string[] }
+  params?: { hours?: number, entity_id?: string, metric_keys?: string[], type?: string }
 }
 
 function pingRpcResult({ method, params }: RpcRequest) {
@@ -65,7 +65,14 @@ function pingRpcResult({ method, params }: RpcRequest) {
   }
 }
 
-async function mockKomari(page: Page, baseURL: string, pluginStatus: 200 | 404, ping = false) {
+const edgeUuid = 'browser-test-edge'
+const homeTasks = [
+  { id: 1, name: pingTask, clients: [uuid, edgeUuid] },
+  { id: 2, name: 'Global priority', clients: [uuid] },
+  { id: 3, name: 'Fallback route', clients: [edgeUuid] },
+]
+
+async function mockKomari(page: Page, baseURL: string, pluginStatus: 200 | 404, ping = false, homeLineCount?: number) {
   await page.clock.setFixedTime(now)
   await page.route('**/*', (route) => {
     const request = route.request()
@@ -84,13 +91,42 @@ async function mockKomari(page: Page, baseURL: string, pluginStatus: 200 | 404, 
               sitename: 'Komari Browser Test',
               record_enabled: true,
               record_preserve_time: 24,
-              theme_settings: { rpcTransportMode: 'http', enable_node_detail_ipqa: false },
+              theme_settings: {
+                rpcTransportMode: 'http',
+                enable_node_detail_ipqa: false,
+                ...(homeLineCount && {
+                  earthViewMode: 'hide',
+                  visitorInfoCardEnabled: false,
+                  disablePageAnimation: true,
+                  homePingLineCount: homeLineCount,
+                  homePingTaskOrder: [2, 1],
+                }),
+              },
             },
           },
         })
       case '/api/rpc2': {
         const call = request.postDataJSON() as RpcRequest
-        const result = rpcResults[call.method] ?? (ping ? pingRpcResult(call) : undefined)
+        const homeResults: Record<string, unknown> = homeLineCount
+          ? {
+              'common:getNodes': {
+                [uuid]: { ...node, price: 39, billing_cycle: 365 },
+                [edgeUuid]: { ...node, uuid: edgeUuid, name: 'Edge fixture node' },
+              },
+              'common:getNodesLatestStatus': {
+                [uuid]: { ...records.at(-1), uptime: 8 * 86400 },
+                [edgeUuid]: { ...records.at(-1), client: edgeUuid, uptime: 8 * 86400 },
+              },
+              'public:getPublicPingTasks': homeTasks,
+              'common:getRecords': call.params?.type === 'ping'
+                ? {
+                    tasks: homeTasks,
+                    records: [{ client: uuid, task_id: 1, time: new Date(now - 60_000).toISOString(), value: 25 }],
+                  }
+                : { records: [] },
+            }
+          : {}
+        const result = homeResults[call.method] ?? rpcResults[call.method] ?? (ping ? pingRpcResult(call) : undefined)
         const reply = result !== undefined
           ? { result }
           : { error: { code: -32601, message: 'Method not found' } }
@@ -131,6 +167,43 @@ async function mockKomari(page: Page, baseURL: string, pluginStatus: 200 | 404, 
     }
   }, pingTask)
 }
+
+test('homepage ping slots share the configured count and use native task fallback', async ({ page, baseURL }) => {
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await mockKomari(page, baseURL!, 404, true, 6)
+  await page.goto('/')
+  const card = page.locator('.node-card').filter({ hasText: node.name })
+  const edge = page.locator('.node-card').filter({ hasText: 'Edge fixture node' })
+  const latency = card.getByRole('region', { name: '延迟' })
+  const edgeLatency = edge.getByRole('region', { name: '延迟' })
+  await expect(latency.locator('button')).toHaveCount(2)
+  await expect(latency.locator('[data-ping-task]')).toHaveCount(6)
+  await expect(edgeLatency.locator('[data-ping-task]')).toHaveCount(6)
+  await expect(edgeLatency.locator('[data-ping-task="empty"]')).toHaveCount(4)
+  await expect(latency.locator('button').first()).toHaveAccessibleName('Global priority 延迟 — 暂无采样')
+  await expect(edgeLatency.locator('button').last()).toHaveAccessibleName('Fallback route 延迟 — 暂无采样')
+  await expect(card.getByRole('button', { name: `${pingTask} 丢包 0.0%` })).toBeVisible()
+  await expect(latency.locator('[data-ping-task="1"] .rounded-full').last()).toHaveCSS('border-top-left-radius', /^(9999px|[0-9.e+]+px)$/)
+  await expect(card.getByText(/¥\s*39|在线\s*8\s*天/)).toHaveCount(0)
+  expect(await card.evaluate(element => element.offsetHeight)).toBe(await edge.evaluate(element => element.offsetHeight))
+
+  await latency.getByRole('button', { name: `${pingTask} 延迟 25 ms` }).press('Enter')
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.getByText(pingTask, { exact: true })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(dialog).toBeHidden()
+
+  await page.setViewportSize({ width: 360, height: 800 })
+  await expect(latency.locator('[data-ping-task]')).toHaveCount(6)
+  expect(await card.evaluate(element => element.scrollWidth)).toBeLessThanOrEqual(await card.evaluate(element => element.clientWidth))
+  await page.setViewportSize({ width: 1280, height: 900 })
+
+  await page.getByRole('button', { name: '列表视图' }).click()
+  await expect(page.locator('[data-node-ping-panels]')).toHaveCount(2)
+  for (const panel of await page.locator('[data-ping-panel="latency"]').all())
+    await expect(panel.locator('[data-ping-task]')).toHaveCount(6)
+  await expect(page.getByText('三网', { exact: true })).toHaveCount(0)
+})
 
 async function openCpuChart(page: Page, baseURL: string, pluginStatus: 200 | 404) {
   await mockKomari(page, baseURL, pluginStatus)

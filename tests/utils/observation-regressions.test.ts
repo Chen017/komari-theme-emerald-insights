@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { it } from 'node:test'
 import { buildStats } from '../../src/composables/useNodePingStats'
 import { evaluateProviderScore } from '../../src/features/ipqa/formatters'
+import { parseHomePingLineCount, parseHomePingTaskOrder, selectHomePingTasks } from '../../src/utils/homePingSettings'
 import { fillMissingTimePoints, insertObservationGaps } from '../../src/utils/recordHelper'
 
 it('only actual probes enter loss aggregation; online full-loss tasks remain visible', () => {
@@ -15,6 +16,32 @@ it('only actual probes enter loss aggregation; online full-loss tasks remain vis
   const failed = buildStats([records[1]!], [])
   assert.equal(failed.avgLoss, 100)
   assert.equal(failed.avgLatency, -1)
+})
+
+it('fills the shared card slots from the node assignments in Komari order', () => {
+  const tasks = [
+    { id: 4, name: 'Fallback', clients: ['n'] },
+    { id: 1, name: 'Renamed', clients: ['n'] },
+    { id: 3, name: 'Other node', clients: ['other'] },
+    { id: 2, name: 'Previous name', clients: ['n'] },
+  ]
+  const sample = { client: 'n', time: '2026-10-22T00:00:00Z' }
+  const { perTaskStats } = buildStats([
+    { ...sample, task_id: 1, value: 15 },
+    { ...sample, task_id: 3, value: 85 },
+    { ...sample, task_id: 2, value: -1 },
+  ], tasks, 'n')
+
+  const ids = parseHomePingTaskOrder('[3,1,1]')
+  const selected = selectHomePingTasks(perTaskStats, parseHomePingLineCount('6'), ids, [])
+  assert.deepEqual(selected.map(task => task?.taskId ?? null), [1, 4, 2, null, null, null])
+  assert.deepEqual(selected.map(task => task?.loss ?? null), [0, null, 100, null, null, null])
+  assert.deepEqual(selected[0]?.history.map(point => point.latency), [15])
+  assert.deepEqual(selected[1]?.history, [])
+  assert.deepEqual(selected[2]?.history.map(point => [point.latency, point.loss]), [[null, 100]])
+  assert.deepEqual(selectHomePingTasks(perTaskStats, 1, [], ['Previous name']).map(task => task?.taskId), [2])
+  assert.deepEqual(parseHomePingTaskOrder('4,1'), [4, 1])
+  assert.equal(parseHomePingLineCount('7'), 3)
 })
 
 it('load alignment preserves the nearest real peak rather than repeating an old sample', () => {

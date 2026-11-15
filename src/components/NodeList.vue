@@ -2,7 +2,7 @@
 import type { NodeData } from '@/stores/nodes'
 import { Icon } from '@iconify/vue'
 import { computed, ref } from 'vue'
-import NodePingListCell from '@/components/NodePingListCell.vue'
+import NodePingPanels from '@/components/NodePingPanels.vue'
 import TrafficProgress from '@/components/TrafficProgress.vue'
 import { Badge } from '@/components/ui/badge'
 import { DataTooltip } from '@/components/ui/data-tooltip'
@@ -29,7 +29,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   click: [node: NodeData]
-  pingClick: [node: NodeData]
+  pingClick: [node: NodeData, taskId: number]
 }>()
 
 const rowStaggerMs = 35
@@ -49,7 +49,7 @@ const columns: ColumnConfig[] = [
   { key: 'disk', label: '硬盘', width: '100px', sortable: true },
   { key: 'traffic', label: '流量', width: '100px', sortable: true },
   { key: 'rate', label: '速率', width: '80px', sortable: true },
-  { key: 'networks', label: '三网', width: '136px', sortable: false },
+  { key: 'networks', label: '探测', width: '208px', sortable: false },
 ]
 
 const sortKey = ref<string>('')
@@ -126,10 +126,6 @@ function handleClick(node: NodeData) {
   emit('click', node)
 }
 
-function openPingDialog(node: NodeData) {
-  emit('pingClick', node)
-}
-
 function getRowTransitionKey(node: NodeData): string {
   return props.transitionKey ? `${props.transitionKey}-${node.uuid}` : node.uuid
 }
@@ -171,7 +167,7 @@ function getRowTransitionStyle(index: number): Record<string, string> {
         <div
           v-for="(node, index) in sortedNodes"
           :key="getRowTransitionKey(node)"
-          class="relative flex h-16 cursor-pointer flex-col justify-center rounded-lg px-2 shadow-[0_0_4px,0_0_0_1px] shadow-transparent transition-all bg-background/60 hover:bg-background hover:shadow-emerald-600/10"
+          class="relative flex min-h-16 cursor-pointer flex-col justify-center rounded-lg px-2 py-1 shadow-[0_0_4px,0_0_0_1px] shadow-transparent transition-all bg-background/60 hover:bg-background hover:shadow-emerald-600/10"
           :class="[pickSurfaceClass('', 'backdrop-blur-sm'), !node.online && '!shadow-red-600/10']"
           :style="getRowTransitionStyle(index)"
           @click="handleClick(node)"
@@ -244,20 +240,12 @@ function getRowTransitionStyle(index: number): Record<string, string> {
                 </div>
               </div>
 
-              <!-- 三网 -->
-              <div v-else-if="col.key === 'networks'" class="flex flex-col gap-0.5">
-                <NodePingListCell
-                  :uuid="node.uuid"
-                  :online="node.online"
-                  role="button"
-                  tabindex="0"
-                  class="outline-none"
-                  :aria-label="`${node.name} 延迟 / 丢包`"
-                  @click.stop="openPingDialog(node)"
-                  @keydown.enter.stop.prevent="openPingDialog(node)"
-                  @keydown.space.stop.prevent="openPingDialog(node)"
-                />
-              </div>
+              <NodePingPanels
+                v-else-if="col.key === 'networks'"
+                :uuid="node.uuid"
+                compact
+                @select="emit('pingClick', node, $event)"
+              />
 
               <!-- 操作系统 -->
               <div v-else-if="col.key === 'os'" class="flex justify-center">

@@ -16,6 +16,7 @@ import '@/utils/echarts' // 共享 ECharts 配置
 
 const props = defineProps<{
   uuid: string
+  initialTaskId?: number
 }>()
 
 const appStore = useAppStore()
@@ -427,7 +428,10 @@ async function fetchRecords() {
     tasks.value = result.tasks
 
     if (tasks.value.length > 0 && selectedTaskIds.value.length === 0) {
-      selectedTaskIds.value = tasks.value.map(t => t.id)
+      const taskIds = tasks.value.map(task => task.id)
+      selectedTaskIds.value = props.initialTaskId !== undefined && taskIds.includes(props.initialTaskId)
+        ? [props.initialTaskId]
+        : taskIds
     }
   }
   catch (err) {

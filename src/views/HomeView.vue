@@ -47,6 +47,7 @@ onDeactivated(() => {
 const searchText = ref('')
 const debouncedSearchText = ref('')
 const selectedPingNodeUuid = ref<string | null>(null)
+const selectedPingTaskId = ref<number>()
 
 const updateDebouncedSearch = useDebounceFn((value: string) => {
   debouncedSearchText.value = value
@@ -128,7 +129,8 @@ function handleNodeClick(node: typeof nodesStore.nodes[number]) {
   router.push({ name: 'instance-detail', params: { id: node.uuid } })
 }
 
-function handlePingClick(node: NodeData) {
+function handlePingClick(node: NodeData, taskId: number) {
+  selectedPingTaskId.value = taskId
   selectedPingNodeUuid.value = node.uuid
 }
 
@@ -291,7 +293,7 @@ function getNodeItemTransitionStyle(index: number): Record<string, string> {
           </div>
         </DialogHeader>
         <div class="max-h-[calc(90vh-4rem)] overflow-y-auto p-4 pt-0">
-          <PingChart :uuid="selectedPingNode.uuid" />
+          <PingChart :key="selectedPingTaskId" :uuid="selectedPingNode.uuid" :initial-task-id="selectedPingTaskId" />
         </div>
       </DialogContent>
     </Dialog>

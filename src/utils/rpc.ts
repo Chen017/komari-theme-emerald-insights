@@ -792,6 +792,10 @@ export class KomariRpc {
     })
   }
 
+  async getPublicPingTasks(): Promise<{ id: number, name: string, clients?: string[] | null }[]> {
+    return this.client.call('public:getPublicPingTasks')
+  }
+
   /**
    * 获取 Ping 记录
    */
