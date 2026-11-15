@@ -183,7 +183,8 @@ test('homepage ping slots share the configured count and use native task fallbac
   await expect(latency.locator('button').first()).toHaveAccessibleName('Global priority 延迟 — 暂无采样')
   await expect(edgeLatency.locator('button').last()).toHaveAccessibleName('Fallback route 延迟 — 暂无采样')
   await expect(card.getByRole('button', { name: `${pingTask} 丢包 0.0%` })).toBeVisible()
-  await expect(latency.locator('[data-ping-task="1"] .rounded-full').last()).toHaveCSS('border-top-left-radius', /^(9999px|[0-9.e+]+px)$/)
+  const latestSegment = latency.locator('[data-ping-task="1"] .rounded-full').last()
+  expect(await latestSegment.evaluate(segment => Number.parseFloat(getComputedStyle(segment).borderTopLeftRadius))).toBeGreaterThan(1)
   await expect(card.getByText(/¥\s*39|在线\s*8\s*天/)).toHaveCount(0)
   expect(await card.evaluate(element => element.offsetHeight)).toBe(await edge.evaluate(element => element.offsetHeight))
 

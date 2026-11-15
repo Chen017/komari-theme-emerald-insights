@@ -10,6 +10,7 @@ type Lang = 'zh-CN' | 'en-US'
 type NodeViewMode = 'card' | 'list'
 type RpcTransportMode = 'websocket' | 'http'
 type EarthViewMode = 'earth' | 'earth-stop' | 'maps' | 'cards' | 'hide'
+const PING_TASK_NAME_SEPARATOR = /[,，]/
 
 /** 固定的字节精度配置 */
 const BYTE_DECIMALS: ByteDecimalsConfig = {
@@ -160,7 +161,7 @@ const useAppStore = defineStore('app', () => {
     const seen = new Set<string>()
     const names: string[] = []
 
-    for (const item of raw.split(/[,，]/)) {
+    for (const item of raw.split(PING_TASK_NAME_SEPARATOR)) {
       const normalized = item.trim()
       if (!normalized || seen.has(normalized))
         continue

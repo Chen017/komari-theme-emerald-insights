@@ -1,5 +1,7 @@
+const PING_TASK_ID_SEPARATOR = /[,，]/
+
 export function parseHomePingLineCount(value: unknown): number {
-  const count = typeof value === 'number' || typeof value === 'string' ? Number(value) : NaN
+  const count = typeof value === 'number' || typeof value === 'string' ? Number(value) : Number.NaN
   return Number.isInteger(count) && count >= 1 && count <= 6 ? count : 3
 }
 
@@ -12,13 +14,13 @@ export function parseHomePingTaskOrder(value: unknown): number[] {
         raw = [raw]
     }
     catch {
-      raw = value.split(/[,，]/)
+      raw = value.split(PING_TASK_ID_SEPARATOR)
     }
   }
   if (!Array.isArray(raw))
     return []
 
-  const ids = raw.map(id => typeof id === 'number' || typeof id === 'string' ? Number(id) : NaN)
+  const ids = raw.map(id => typeof id === 'number' || typeof id === 'string' ? Number(id) : Number.NaN)
   return [...new Set(ids.filter(id => Number.isSafeInteger(id) && id > 0))]
 }
 
@@ -32,8 +34,7 @@ export function selectHomePingTasks<T extends { taskId: number, name: string }>(
   const ids = preferredIds.length
     ? preferredIds
     : legacyNames.flatMap(name => tasks.filter(task => task.name === name).map(task => task.taskId))
-  const ordered = [...new Set([...ids, ...byId.keys()])]
-    .map(id => byId.get(id))
+  const ordered = Array.from(new Set([...ids, ...byId.keys()]), id => byId.get(id))
     .filter((task): task is T => task !== undefined)
 
   return Array.from({ length: count }, (_, index) => ordered[index] ?? null)

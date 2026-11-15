@@ -11,7 +11,7 @@ import { useBackgroundSurface } from '@/composables/useBackgroundSurface'
 import { useNodeFormatters } from '@/composables/useNodeFormatters'
 import { useAppStore } from '@/stores/app'
 import { formatDateTime, getStatus } from '@/utils/helper'
-import { formatOfflineTime, getCustomTags, getNodeTagDisplay, getPriceTags, getRemainingTimeTagClass, getTrafficUsed, getTrafficUsedPercentage, hasRegion, showTrafficProgress } from '@/utils/nodeHelpers'
+import { formatOfflineTime, getNodeTagDisplay, getPriceTags, getRemainingTimeTagClass, getTrafficUsed, getTrafficUsedPercentage, hasRegion, showTrafficProgress } from '@/utils/nodeHelpers'
 import { getOSImage, getOSName } from '@/utils/osImageHelper'
 import { getFlagSrc, getRegionDisplayName } from '@/utils/regionHelper'
 
@@ -221,7 +221,7 @@ function getRowTransitionStyle(index: number): Record<string, string> {
 
               <!-- 标签 -->
               <div v-else-if="col.key === 'tags'">
-                <div v-for="tagDisplay in [getNodeTagDisplay(node, appStore.lang)]" :key="node.uuid" class="flex flex-wrap gap-1 items-center">
+                <div v-for="(tagDisplay, index) in [getNodeTagDisplay(node, appStore.lang)]" :key="index" class="flex flex-wrap gap-1 items-center">
                   <Badge
                     v-for="(tag, tagIndex) in tagDisplay.customTags" :key="tagIndex" variant="outline"
                     class="!text-[11px] rounded text-muted-foreground border-muted-foreground/10 px-1.5"
