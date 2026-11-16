@@ -100,6 +100,32 @@ test('WebSocket reconnects after a dropped connection and retains the dashboard'
   await expect(card).toBeVisible()
 })
 
+for (const { setting, interval } of [{ setting: 17, interval: 17_000 }, { setting: '17', interval: 3000 }]) {
+  test(`dashboard and live load chart share the polling interval for ${JSON.stringify(setting)}`, async ({ page, baseURL }) => {
+    await fixture(page, baseURL!, { dataUpdateInterval: setting })
+    await page.addInitScript((expectedDelay) => {
+      const setInterval = window.setInterval.bind(window)
+      window.setInterval = (handler, delay, ...args) => {
+        if (delay === expectedDelay) {
+          const { dataset } = document.documentElement
+          dataset.pollTimers = String(Number(dataset.pollTimers ?? 0) + 1)
+        }
+        return setInterval(handler, delay, ...args)
+      }
+    }, interval)
+
+    await page.goto('/')
+    const card = page.getByRole('link', { name: node.name })
+    await expect(card).toBeVisible()
+    const root = page.locator('html')
+    await expect(root).toHaveAttribute('data-poll-timers', '1')
+
+    await card.click()
+    await expect(page.getByRole('tab', { name: '实时' })).toBeVisible()
+    await expect(root).toHaveAttribute('data-poll-timers', '2')
+  })
+}
+
 test('homepage starts the first node module during the initial data fetch', async ({ page, baseURL }) => {
   await fixture(page, baseURL!)
   const nodes = Promise.withResolvers<void>()

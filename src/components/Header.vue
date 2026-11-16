@@ -5,8 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { DataTooltip } from '@/components/ui/data-tooltip'
-import { loadCostRenewal } from '@/router/pageLoaders'
-import { loadResourceInsightsPage } from '@/router/resourceInsights'
+import { loadCostRenewal, loadResourceInsightsPage } from '@/router/pageLoaders'
 import { useAppStore } from '@/stores/app'
 
 const router = useRouter()
@@ -99,7 +98,7 @@ const sitename = computed(() => appStore.publicSettings?.sitename || 'Komari Mon
     class="transition-colors duration-150 top-0 sticky z-10 border-b border-transparent"
     :class="isScrolled ? 'navigation-glass border-border/70' : 'bg-transparent'"
   >
-    <div class="px-4 flex-between h-14 max-w-[1280px] mx-auto">
+    <div class="flex h-14 items-center justify-between px-4 max-w-[1280px] mx-auto">
       <RouterLink to="/" class="flex items-center gap-3 cursor-pointer rounded-sm focus-visible:outline-2 focus-visible:outline-ring">
         <Avatar class="size-8">
           <AvatarImage :src="siteFavicon" :alt="sitename" />

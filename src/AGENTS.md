@@ -4,7 +4,7 @@ This document applies to `/src` only. Keep changes aligned with the current Vue 
 
 ## Core architecture
 
-- `main.ts` is bootstrap only. It creates the Vue app, installs Pinia and the router, loads global styles, sets `window.$message`, kicks off `setupIconify()`, and mounts `App.vue`. Do not move feature logic into bootstrap.
+- `main.ts` is bootstrap only. It creates the Vue app, installs Pinia and the router, loads global styles, sets `window.$message`, and mounts `App.vue`. Do not move feature logic into bootstrap.
 - `App.vue` is the app shell. It owns global layout, mounts `<Toaster>` (vue-sonner) and `Provider`, runs startup lifecycle wiring (`initApp()` / `destroyInitManager()` from `@/utils/init`), and `KeepAlive`s `HomeView`.
 - `src/router/index.ts` defines five lazy routes:
   - `/` → `@/views/HomeView.vue`
@@ -22,7 +22,7 @@ This document applies to `/src` only. Keep changes aligned with the current Vue 
 
 ## UI library (`src/components/ui/`)
 
-`src/components/ui/` is the local shadcn-vue-style component library (alert, avatar, back-top, badge, button, card-x, empty, input, progress-thin, sonner, spinner, tabs, tooltip). Each component:
+`src/components/ui/` is the local shadcn-vue-style component library (alert, avatar, back-top, badge, button, card-x, empty, progress-thin, sonner, spinner, tabs, tooltip). Each component:
 
 - Wraps a `reka-ui` primitive (or composes lower-level primitives) when applicable.
 - Declares variants with `class-variance-authority` and merges classes via `cn()` from `@/lib/utils` (which combines `clsx` + `tailwind-merge`).
@@ -37,7 +37,7 @@ When you need a new piece of UI:
 ## Views
 
 - Views orchestrate data already exposed by stores and utils.
-- `HomeView.vue` coordinates search, grouping, view-mode selection, scroll restore, and route navigation.
+- `HomeView.vue` coordinates search, grouping, scroll restore, and route navigation.
 - `InstanceDetail.vue` coordinates node detail presentation and chart tabs for a selected node.
 - Keep `HomeView` named with `defineOptions({ name: 'HomeView' })` so `App.vue`'s `KeepAlive :include="['HomeView']"` keeps working.
 - Heavy node and chart UI stays lazily loaded with `defineAsyncComponent`. The lazy home route includes its summary layout so node cards start at their final position. Import the globe and map renderers separately inside that layout.
@@ -46,7 +46,7 @@ When you need a new piece of UI:
 
 - Pinia stores are setup stores and are the source of truth for app state.
 - `@/stores/app` owns public settings, theme-derived config, login state, layout flags, formatting preferences, theme mode, and persisted UI state.
-- `@/stores/nodes` owns normalized node data, group derivation, WebSocket state, and node updates.
+- `@/stores/nodes` owns normalized node data, group derivation, the WebSocket reconnect counter, and node updates.
 - Components and views should read from stores, not recreate parallel state for the same domain.
 - When behavior depends on `publicSettings.theme_settings`, follow the existing defensive pattern in `@/stores/app`: `typeof` checks, guarded `JSON.parse`, valid-value filtering, and defaults. The settings schema lives in `komari-theme.json` (`configuration.data`).
 
@@ -64,12 +64,12 @@ When you need a new piece of UI:
 
 - Only one app global exists on `window`: `$message`. It is typed in `src/types/global.d.ts`. Keep that file in sync if you add/remove a global.
 - There is **no** `$dialog`, `$notification`, or `$loadingBar`. Do not assume Naive-UI-style provider APIs.
-- Theming: `Provider.vue` drives `useDark()` from `@vueuse/core` (storage key `vueuse-color-scheme`) and toggles `.dark` on `<html>`. Source of truth for the user-chosen mode is `useAppStore().themeMode` (`'auto' | 'light' | 'dark'`).
-- Build-time constants `__BUILD_VERSION__` and `__BUILD_GIT_HASH__` are also declared in `src/types/global.d.ts` and injected by `vite.config.ts`.
+- Theming: `Provider.vue` drives `useDark()` from `@vueuse/core` and toggles `.dark` on `<html>`. Source of truth for the user-chosen mode is `useAppStore().themeMode` (`'auto' | 'light' | 'dark'`).
+- Build-time constants `__BUILD_VERSION__` and `__BUILD_GIT_HASH__` are declared in `env.d.ts` and injected by `vite.config.ts`.
 
 ## Icons
 
-- All icons go through `@iconify/vue` (`<Icon icon="icon-park-outline:sun" />`). Sets are fetched on demand from the Iconify CDN — `@/utils/iconify`'s `setupIconify()` is a no-op kept as a future extension point. Do not preregister whole icon sets in client bundles.
+- All icons go through `@iconify/vue` (`<Icon icon="icon-park-outline:sun" />`). Sets are fetched on demand from the Iconify CDN. Do not preregister whole icon sets in client bundles.
 - Lucide icons are available via the `lucide:` prefix (e.g. `lucide:x`, `lucide:minus`). Do **not** add `lucide-vue-next` or any other icon-as-component package — the project deliberately routes everything through Iconify so there is a single icon pipeline.
 
 ## Styles

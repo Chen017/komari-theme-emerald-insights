@@ -19,15 +19,6 @@ export interface NodeFreshness {
   reason?: string | null;
 }
 
-export interface IpqaCapabilities {
-  schema_version: number;
-  plugin_version: string;
-  archive_api: boolean;
-  change_api: boolean;
-  ipv4: boolean;
-  ipv6: boolean;
-}
-
 export interface ClassifiedRiskScore {
   provider: string;
   rawValue: string | number | boolean | null;
@@ -144,17 +135,4 @@ export interface IpqaDailyPairedReport {
     aiSummary: Record<string, { unlocked: boolean; region?: string }>;
   };
   changesFromPrevious?: IpqaSemanticChange[];
-}
-
-export interface IpqaScoreHistoryPoint {
-  date: string;
-  v4: Record<string, string | number | boolean | null> | null;
-  v6: Record<string, string | number | boolean | null> | null;
-  highestRisk: RiskCategory;
-}
-
-export interface IpqaMediaHistoryPoint {
-  date: string;
-  mediaSummary: Record<string, { unlocked: boolean; region?: string }>;
-  aiSummary: Record<string, { unlocked: boolean; region?: string }>;
 }

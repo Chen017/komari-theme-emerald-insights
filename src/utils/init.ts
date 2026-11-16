@@ -9,28 +9,11 @@ import { useNodesStore } from '@/stores/nodes'
 import { getSharedApi } from '@/utils/api'
 import { getSharedRpc, RpcError } from '@/utils/rpc'
 
-/** 初始化配置 */
-interface InitConfig {
-  /** WebSocket 重连间隔（毫秒） */
-  wsReconnectInterval?: number
-  /** WebSocket 最大重连次数（失败后回落 POST） */
-  wsMaxReconnectAttempts?: number
-  /** 后端健康检查超时（毫秒） */
-  healthCheckTimeout?: number
-  /** POST 模式连续失败次数阈值 */
-  postFailureThreshold?: number
-}
-
-const DEFAULT_CONFIG: Required<InitConfig> = {
-  wsReconnectInterval: 3000,
-  wsMaxReconnectAttempts: 5,
-  healthCheckTimeout: 5000,
-  postFailureThreshold: 3,
-}
+const WS_RECONNECT_INTERVAL_MS = 3000
+const WS_MAX_RECONNECT_ATTEMPTS = 5
 
 /** 初始化状态管理 */
 class InitManager {
-  private config: Required<InitConfig>
   private rpc: KomariRpc
   private appStore: ReturnType<typeof useAppStore>
   private nodesStore: ReturnType<typeof useNodesStore>
@@ -42,25 +25,10 @@ class InitManager {
   private useWebSocket: boolean | null = null // 根据主题配置决定
   private wsCloseUnsubscribe: (() => void) | null = null
   private wsErrorUnsubscribe: (() => void) | null = null
-  constructor(config: InitConfig = {}) {
-    this.config = { ...DEFAULT_CONFIG, ...config }
+  constructor() {
     this.rpc = getSharedRpc()
     this.appStore = useAppStore()
     this.nodesStore = useNodesStore()
-  }
-
-  /**
-   * 获取轮询间隔（毫秒）
-   * 从 publicSettings.theme_settings.dataUpdateInterval 读取，默认 3 秒
-   */
-  private getPollInterval(): number {
-    const settings = this.appStore.publicSettings?.theme_settings
-    const interval = settings?.dataUpdateInterval
-    // 确保值在合理范围内（1-60秒）
-    if (typeof interval === 'number' && interval >= 1 && interval <= 60) {
-      return interval * 1000 // 转换为毫秒
-    }
-    return 3000 // 默认 3 秒
   }
 
   /**
@@ -200,7 +168,7 @@ class InitManager {
       // HTTP 模式：直接设置 RPC 客户端为 HTTP 模式
       const client = this.rpc.getClient()
       client.setTransport(false)
-      this.nodesStore.updateWsState('disconnected', this.config.wsMaxReconnectAttempts)
+      this.nodesStore.wsReconnectAttempts = WS_MAX_RECONNECT_ATTEMPTS
     }
 
     // 开始轮询（作为 WebSocket 的补充或备选方案）
@@ -220,12 +188,11 @@ class InitManager {
 
     // 切换到 WebSocket 模式
     client.setTransport(true)
-    this.nodesStore.updateWsState('connecting', this.nodesStore.wsReconnectAttempts)
 
     try {
       // 使用 ping 验证连接，10 秒超时
       await client.ensureWebSocketConnectedWithPing(10000)
-      this.nodesStore.updateWsState('connected', 0)
+      this.nodesStore.wsReconnectAttempts = 0
       this.clearReconnectTimer()
 
       // 连接成功，重置错误状态
@@ -236,7 +203,6 @@ class InitManager {
     }
     catch (error) {
       console.error('[InitManager] WebSocket connection failed:', error)
-      this.nodesStore.updateWsState('disconnected')
       this.scheduleReconnect()
     }
   }
@@ -262,7 +228,6 @@ class InitManager {
         return
       }
 
-      this.nodesStore.updateWsState('disconnected')
       this.scheduleReconnect()
     })
 
@@ -286,18 +251,13 @@ class InitManager {
     const attempts = this.nodesStore.wsReconnectAttempts
 
     // 达到最大重连次数，回落到 POST 模式
-    if (attempts >= this.config.wsMaxReconnectAttempts) {
+    if (attempts >= WS_MAX_RECONNECT_ATTEMPTS) {
       console.error('[InitManager] Max reconnect attempts reached, falling back to POST mode')
       this.fallbackToPostMode()
       return
     }
 
-    // 首次失败时显示提示
-    // if (attempts === 0) {
-    //   window.$message?.error('WebSocket 建立失败，正在尝试重连。')
-    // }
-
-    this.nodesStore.updateWsState('reconnecting', attempts + 1)
+    this.nodesStore.wsReconnectAttempts = attempts + 1
 
     this.reconnectTimer = setTimeout(async () => {
       this.reconnectTimer = null
@@ -315,7 +275,7 @@ class InitManager {
         console.error('[InitManager] Reconnect failed:', error)
         this.scheduleReconnect()
       }
-    }, this.config.wsReconnectInterval)
+    }, WS_RECONNECT_INTERVAL_MS)
   }
 
   /**
@@ -324,7 +284,7 @@ class InitManager {
   private fallbackToPostMode(): void {
     this.useWebSocket = false
     this.clearReconnectTimer()
-    this.nodesStore.updateWsState('disconnected', this.config.wsMaxReconnectAttempts)
+    this.nodesStore.wsReconnectAttempts = WS_MAX_RECONNECT_ATTEMPTS
 
     // 关闭 WebSocket 连接
     const client = this.rpc.getClient()
@@ -352,7 +312,7 @@ class InitManager {
 
     this.pollTimer = setInterval(() => {
       this.poll()
-    }, this.getPollInterval())
+    }, this.appStore.dataUpdateIntervalMs)
   }
 
   /**
@@ -468,13 +428,6 @@ export async function initApp(): Promise<void> {
 }
 
 /**
- * 获取初始化管理器实例
- */
-export function getInitManager(): InitManager | null {
-  return initManager
-}
-
-/**
  * 销毁初始化管理器
  */
 export function destroyInitManager(): void {
@@ -488,8 +441,5 @@ export function destroyInitManager(): void {
  * 全局刷新节点数据与最新状态
  */
 export async function refreshAllNodes(): Promise<void> {
-  const manager = getInitManager()
-  if (manager) {
-    await manager.refreshNodes()
-  }
+  await initManager?.refreshNodes()
 }

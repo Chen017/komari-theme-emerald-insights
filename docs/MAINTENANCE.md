@@ -4,7 +4,7 @@
 
 - `src/main.ts` 和 `src/App.vue` 负责启动及布局，`src/stores/` 管理 Komari 设置、节点和连接状态。`src/features/` 存放资源概览、成本、IPQA 等业务模块。
 - `src/utils/api.ts` 和 `src/utils/rpc.ts` 负责 HTTP 与 WebSocket 通信。资源、归档和时序转换逻辑由各功能模块复用。具体代码约定见 [源码指南](../src/AGENTS.md)。
-- `komari-theme.json` 定义 Komari 主题及配置，`public/images/` 提供运行期资源，`docs/preview.png` 是安装包输入。Vite 生成 `dist/` 并打包。
+- `komari-theme.json` 定义 Komari 主题及配置，`public/favicon.ico` 提供网站图标，`docs/preview.png` 是安装包输入。Vite 生成 `dist/` 并打包。
 
 ## 开发、测试和打包
 
@@ -18,7 +18,7 @@ bun run verify
 
 `verify` 检查构建脚本、运行 Node 回归、做 Vue 类型检查并构建，再检查 ZIP 内的清单、预览和 HTML 入口引用。单独调试可运行 `bun run test`、`bun run type-check` 或 `bun run preview`。改动应用代码时，额外用 `bun x eslint <文件>` 校验相关文件。`bun run lint` 会尝试修复全库格式，已有全量 lint 问题需分批处理。
 
-构建后运行 `bun run playwright install --only-shell chromium` 和 `bun run test:browser`。浏览器测试通过本地 Vite Preview 打开构建产物。模拟接口覆盖首屏鉴权、WebSocket 重连、图表历史请求、CPU Steal、IPQA 归档及插件降级。交互测试检查进退场、滚动恢复、键盘焦点、快速关开、亮暗主题、窄屏与系统动效偏好。CI 运行同一套 Chromium 测试，失败时可从 Actions 下载追踪文件。
+构建后运行 `bun run playwright install --only-shell chromium` 和 `bun run test:browser`。浏览器测试通过本地 Vite Preview 打开构建产物。模拟接口覆盖首屏鉴权、WebSocket 重连、图表历史请求、CPU Steal、IPQA 归档及插件降级。交互测试检查进退场、滚动恢复、键盘焦点、快速关开、亮暗主题、窄屏、系统动效偏好及旧列表设置的升级兼容。CI 运行同一套 Chromium 测试，失败时可从 Actions 下载追踪文件。
 
 正式包名为 `komari-theme-emerald-insights.zip`。运行 `bun run build:beta` 生成 `komari-theme-emerald-insights-beta-<sha>.zip`，包内版本附加 Beta 后缀，仓库版本字段保持正式版本。可通过 `bun run test:package -- <zip>` 校验指定包。两个包都包含 `dist/`、`komari-theme.json` 和根目录 `preview.png`。缺少构建产物或打包写入失败时，构建会报错并保留上一份有效 ZIP。Windows 本地构建在用户桌面存在时仍复制一份。
 

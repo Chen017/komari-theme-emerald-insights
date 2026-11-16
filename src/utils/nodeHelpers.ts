@@ -1,18 +1,15 @@
 import type { NodeData, TrafficLimitType } from '../stores/nodes'
-import { formatDateTime } from './helper'
-import { formatPriceWithCycle, getDaysUntilExpired, getExpireStatus, getExpireTextClass, parseTags } from './tagHelper'
+import { parseTags } from './tagHelper'
 import { formatTrafficResetDisplay, parseTrafficResetMetadata } from './trafficResetMetadata'
 
-export interface PriceTagItem {
-  text: string
-  highlight?: boolean
-}
+const TRD_REMOVE_REGEX = /<TRD\s*:\s*\d+>/gi
+const TRTZ_REMOVE_REGEX = /<TRTZ\s*:\s*[^>\s]+>/gi
 
 export function hasRegion(region: string | null | undefined): boolean {
   return Boolean(region?.trim())
 }
 
-export function calculateTrafficUsed(upload: number, download: number, type: TrafficLimitType): number {
+function calculateTrafficUsed(upload: number, download: number, type: TrafficLimitType): number {
   switch (type) {
     case 'up': return upload
     case 'down': return download
@@ -39,29 +36,7 @@ export function getTrafficUsedPercentage(node: NodeData): number {
   return Math.min((used / node.traffic_limit) * 100, 100)
 }
 
-export function getPriceTags(node: NodeData, lang: 'zh-CN' | 'en-US'): PriceTagItem[] {
-  const tags: PriceTagItem[] = []
-  const days = getDaysUntilExpired(node.expired_at)
-  const status = getExpireStatus(node.expired_at)
-  const priceText = formatPriceWithCycle(node.price, node.billing_cycle, node.currency, lang)
-  if (node.price !== 0)
-    tags.push({ text: priceText })
-  if (status === 'long_term')
-    tags.push({ text: lang === 'zh-CN' ? '长期' : 'Long-term' })
-  else if (lang === 'zh-CN')
-    tags.push({ text: `${days >= 0 ? '+' : ''}${days}天`, highlight: true })
-  else
-    tags.push({ text: `${days >= 0 ? '+' : ''}${days}d`, highlight: true })
-  return tags
-}
-
-export function getRemainingTimeTagClass(node: NodeData): string {
-  if (node.price === 0)
-    return ''
-  return getExpireTextClass(node.expired_at)
-}
-
-export interface NodeTagDisplay {
+interface NodeTagDisplay {
   customTags: string[]
   trafficResetTag: string | null
   trafficResetTooltip: string | null
@@ -78,10 +53,6 @@ export function getNodeTagDisplay(node: NodeData, lang: 'zh-CN' | 'en-US' = 'zh-
       trafficResetTooltip: null,
     }
   }
-
-  // Filter out recognized machine tokens from custom tags
-  const TRD_REMOVE_REGEX = /<TRD\s*:\s*\d+>/gi
-  const TRTZ_REMOVE_REGEX = /<TRTZ\s*:\s*[^>\s]+>/gi
 
   const filteredTags: string[] = []
   for (const tag of rawTags) {
@@ -103,18 +74,6 @@ export function getNodeTagDisplay(node: NodeData, lang: 'zh-CN' | 'en-US' = 'zh-
   }
 }
 
-export function getCustomTags(node: NodeData): string[] {
-  return getNodeTagDisplay(node).customTags
-}
-
-export function formatOfflineTime(node: NodeData): string {
-  return formatDateTime(node.time)
-}
-
 export function getMemPercentage(node: NodeData): number {
   return (node.ram ?? 0) / (node.mem_total || 1) * 100
-}
-
-export function getDiskPercentage(node: NodeData): number {
-  return (node.disk ?? 0) / (node.disk_total || 1) * 100
 }

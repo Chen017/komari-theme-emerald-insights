@@ -8,7 +8,7 @@ import { destroyInitManager, initApp } from '@/utils/init'
 import Background from './components/Background.vue'
 import Footer from './components/Footer.vue'
 import Header from './components/Header.vue'
-import LoadingCover from './components/LoadingCover.vue'
+import LoadingStatus from './components/LoadingStatus.vue'
 import Provider from './components/Provider.vue'
 
 const appStore = useAppStore()
@@ -65,7 +65,7 @@ onUnmounted(() => {
     <main class="flex-1" :aria-busy="loading">
       <div class="relative max-w-[1280px] mx-auto">
         <Transition name="startup-loading" @before-leave="element => element.setAttribute('aria-hidden', 'true')">
-          <LoadingCover v-if="loading" />
+          <LoadingStatus v-if="loading" label="正在加载监控面板…" class="px-4 py-6" />
         </Transition>
         <Transition name="startup-content">
           <div v-if="!loading">

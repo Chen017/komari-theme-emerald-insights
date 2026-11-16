@@ -1,18 +1,14 @@
 <script setup lang="ts">
-import type { IpqaFleetOverview, IpqaSemanticChange } from '@/features/ipqa'
+import type { IpqaFleetOverview, IpqaSemanticChange } from '@/features/ipqa/types'
 import type { NodeData } from '@/stores/nodes'
 import { Icon } from '@iconify/vue'
 import { computed, onMounted, ref, watch } from 'vue'
-import {
-  fetchFleetOverview,
-  fetchNodeChanges,
-  IpqaFleetSummary,
-  IpqaMediaMatrix,
-  IpqaNodeGrid,
-  IpqaRiskMatrix,
-  RecentIpqaChanges,
-} from '@/features/ipqa'
-import { IpqaApiError } from '@/features/ipqa/services/api'
+import IpqaFleetSummary from '@/features/ipqa/components/IpqaFleetSummary.vue'
+import IpqaMediaMatrix from '@/features/ipqa/components/IpqaMediaMatrix.vue'
+import IpqaNodeGrid from '@/features/ipqa/components/IpqaNodeGrid.vue'
+import IpqaRiskMatrix from '@/features/ipqa/components/IpqaRiskMatrix.vue'
+import RecentIpqaChanges from '@/features/ipqa/components/RecentIpqaChanges.vue'
+import { fetchFleetOverview, fetchNodeChanges, IpqaApiError } from '@/features/ipqa/services/api'
 import { useAppStore } from '@/stores/app'
 
 const props = defineProps<{

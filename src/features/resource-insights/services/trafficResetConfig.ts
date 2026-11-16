@@ -1,3 +1,5 @@
+import { DEFAULT_TRAFFIC_RESET_TIMEZONE, isValidTimeZone } from '../../../utils/trafficResetMetadata'
+
 export interface TrafficResetConfigResult {
   day: number | null
   timezone: string | null
@@ -14,17 +16,6 @@ export interface TrafficResetSettings {
 
 const TRD_TAG_REGEX = /<\s*TRD\s*:\s*(\d+)\s*>/i
 const TRTZ_TAG_REGEX = /<\s*TRTZ\s*:\s*([^>]+)\s*>/i
-
-export function isValidTimeZone(tz: string | null | undefined): boolean {
-  if (!tz || typeof tz !== 'string') return false
-  try {
-    Intl.DateTimeFormat(undefined, { timeZone: tz.trim() })
-    return true
-  }
-  catch {
-    return false
-  }
-}
 
 /**
  * Extracts traffic reset day (1-31) from node tags, e.g. `<TRD:18>`.
@@ -119,7 +110,7 @@ export function resolveTrafficResetConfig(
       timezoneSource = 'fallback'
     }
     else {
-      timezone = 'Asia/Shanghai'
+      timezone = DEFAULT_TRAFFIC_RESET_TIMEZONE
       timezoneSource = 'fallback'
     }
   }

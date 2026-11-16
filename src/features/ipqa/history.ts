@@ -56,7 +56,7 @@ export function historyFieldLabel(field: string): string {
   return parts.slice(1).join(' · ')
 }
 
-export function formatHistoryValue(value: unknown): string {
+function formatHistoryValue(value: unknown): string {
   if (value === null || value === undefined || value === '')
     return '无数据'
   if (value === true || value === 'true')

@@ -28,11 +28,7 @@ useDark({
 watch(
   () => appStore.isDark,
   (dark) => {
-    const root = document.documentElement
-    if (dark)
-      root.classList.add('dark')
-    else root.classList.remove('dark')
-    root.style.colorScheme = dark ? 'dark' : 'light'
+    document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
   },
   { immediate: true },
 )

@@ -190,7 +190,6 @@ export {
 export {
   extractResetDayFromTags,
   extractResetTimezoneFromTags,
-  isValidTimeZone,
   resolveTrafficResetConfig,
   resolveTrafficResetDay,
   type TrafficResetConfigResult,

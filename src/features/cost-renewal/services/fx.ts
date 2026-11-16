@@ -7,14 +7,6 @@ import {
   getTodayDateKey,
 } from '@/utils/financeHelper'
 
-export interface FxState {
-  rates: ExchangeRates
-  source: ExchangeRateSource
-  date: string
-  loading: boolean
-  error: string | null
-}
-
 const sourceLabels: Record<ExchangeRateSource, string> = {
   'network': '当日网络汇率',
   'cache': '当日缓存汇率',
@@ -22,7 +14,7 @@ const sourceLabels: Record<ExchangeRateSource, string> = {
   'default': '内置基准汇率 (网络与缓存不可用)',
 }
 
-export function getFxSourceLabel(source: ExchangeRateSource): string {
+function getFxSourceLabel(source: ExchangeRateSource): string {
   return sourceLabels[source] ?? '汇率状态未知'
 }
 
@@ -38,19 +30,16 @@ export function useFxRates() {
   const source = ref<ExchangeRateSource>('default')
   const date = ref<string>(getTodayDateKey())
   const loading = ref(false)
-  const error = ref<string | null>(null)
 
   async function fetchRates(force = false) {
     loading.value = true
-    error.value = null
     try {
       const result = await getDailyExchangeRates(force)
       rates.value = result.rates
       source.value = result.source
       date.value = result.date
     }
-    catch (err) {
-      error.value = err instanceof Error ? err.message : String(err)
+    catch {
       rates.value = DEFAULT_EXCHANGE_RATES
       source.value = 'default'
     }
@@ -66,7 +55,6 @@ export function useFxRates() {
     source,
     date,
     loading,
-    error,
     sourceLabel,
     fetchRates,
   }

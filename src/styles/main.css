@@ -130,27 +130,6 @@
   }
 }
 
-@layer utilities {
-  .flex-center {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .flex-between {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .flex-col-center {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-  }
-}
-
 :root {
   --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
 }

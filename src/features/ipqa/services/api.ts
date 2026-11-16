@@ -1,9 +1,6 @@
 import type {
-  IpqaCapabilities,
   IpqaDailyPairedReport,
   IpqaFleetOverview,
-  IpqaMediaHistoryPoint,
-  IpqaScoreHistoryPoint,
   IpqaSemanticChange,
 } from '../types'
 import { getSharedRpc } from '../../../utils/rpc'
@@ -67,10 +64,6 @@ async function getJson<T>(
   throw new IpqaApiError('unavailable')
 }
 
-export async function fetchCapabilities(): Promise<IpqaCapabilities | null> {
-  return getJson<IpqaCapabilities>('/capabilities', 'plugin:ipqaGetCapabilities')
-}
-
 export async function fetchFleetOverview(uuids?: string[]): Promise<IpqaFleetOverview | null> {
   const query = uuids && uuids.length > 0 ? `?uuids=${encodeURIComponent(uuids.join(','))}` : ''
   return getJson<IpqaFleetOverview>(`/overview${query}`, 'plugin:ipqaGetOverview', uuids && uuids.length > 0 ? { uuids } : undefined)
@@ -86,10 +79,6 @@ export async function fetchNodeArchivePage(uuid: string, limit = 30, before?: st
   return { dates: data?.dates ?? [], hasMore: data?.hasMore ?? (data?.dates.length === limit) }
 }
 
-export async function fetchNodeArchiveDates(uuid: string, limit = 30): Promise<string[]> {
-  return (await fetchNodeArchivePage(uuid, limit)).dates
-}
-
 export async function fetchNodeArchive(uuid: string, date: string): Promise<IpqaDailyPairedReport | null> {
   return getJson<IpqaDailyPairedReport>(`/nodes/${uuid}/archives/${date}`, 'plugin:ipqaGetNodeArchive', { uuid, date })
 }
@@ -97,14 +86,4 @@ export async function fetchNodeArchive(uuid: string, date: string): Promise<Ipqa
 export async function fetchNodeChanges(uuid: string): Promise<IpqaSemanticChange[]> {
   const data = await getJson<{ changes: IpqaSemanticChange[] }>(`/nodes/${uuid}/changes`, 'plugin:ipqaGetNodeChanges', { uuid })
   return data?.changes ?? []
-}
-
-export async function fetchNodeScoreHistory(uuid: string): Promise<IpqaScoreHistoryPoint[]> {
-  const data = await getJson<{ history: IpqaScoreHistoryPoint[] }>(`/nodes/${uuid}/history/scores`, 'plugin:ipqaGetNodeScoreHistory', { uuid })
-  return data?.history ?? []
-}
-
-export async function fetchNodeMediaHistory(uuid: string): Promise<IpqaMediaHistoryPoint[]> {
-  const data = await getJson<{ history: IpqaMediaHistoryPoint[] }>(`/nodes/${uuid}/history/media`, 'plugin:ipqaGetNodeMediaHistory', { uuid })
-  return data?.history ?? []
 }

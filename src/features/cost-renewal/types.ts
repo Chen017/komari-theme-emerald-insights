@@ -1,4 +1,4 @@
-import type { CurrencyCode, ExchangeRates, ExchangeRateSource } from '@/utils/financeHelper'
+import type { ExchangeRates, ExchangeRateSource } from '@/utils/financeHelper'
 import type { ExpireStatus } from '@/utils/tagHelper'
 
 export type RenewalFilter = 'all' | '30d' | '90d' | 'expired' | 'no_expiry'

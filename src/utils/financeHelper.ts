@@ -38,7 +38,7 @@ const FINANCE_CURRENCY_CONFIG = {
 } as const
 
 export type CurrencyCode = keyof typeof FINANCE_CURRENCY_CONFIG
-export const SUPPORTED_FINANCE_CURRENCIES = Object.keys(FINANCE_CURRENCY_CONFIG) as CurrencyCode[]
+const SUPPORTED_FINANCE_CURRENCIES = Object.keys(FINANCE_CURRENCY_CONFIG) as CurrencyCode[]
 export const DISPLAY_FINANCE_CURRENCIES = [
   'CNY',
   'USD',
@@ -136,7 +136,7 @@ export function normalizeCurrency(currency: string | null | undefined): Currency
   return normalizeCurrencyStrict(currency) ?? 'CNY'
 }
 
-export function isSupportedCurrency(currency: string): currency is CurrencyCode {
+function isSupportedCurrency(currency: string): currency is CurrencyCode {
   return (SUPPORTED_FINANCE_CURRENCIES as readonly string[]).includes(currency)
 }
 

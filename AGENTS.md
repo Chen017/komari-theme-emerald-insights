@@ -14,13 +14,13 @@ Repo guide for `komari-theme-emerald`.
 - Builds a Komari theme, not a generic web app
 - Release artifact is a zip package Komari can import
 - Runtime app code lives under `src/`
-- Runtime static assets include `public/images/`
+- The repository ships the site favicon in `public/favicon.ico`. Runtime flag and OS logo URLs use `/assets/flags/` and `/assets/logo/` on the Komari site.
 - Release preview image is `docs/preview.png`
 
 ## Root structure
 
 - `src/` app source
-- `public/images/` runtime image contract, especially flags and logos
+- `public/favicon.ico` site favicon
 - `.github/` CI workflow and issue templates
 - `docs/preview.png` release preview image
 - `komari-theme.json` theme manifest consumed by the zip build
@@ -82,7 +82,7 @@ CI runs the frozen install, `bun run verify`, and `bun run test:browser` against
 - Check `vite.config.ts` for build behavior, global constants, and zip packaging
 - Check `komari-theme.json` for theme metadata and managed configuration schema
 - Check `src/` for app behavior
-- Check `public/images/` when code references image filenames directly
+- Check the theme image helpers and Komari asset paths when changing flag or OS logo URLs
 - Check `.github/workflows/release-on-version-bump.yml` for CI expectations
 - Check `.github/ISSUE_TEMPLATE/` for issue intake shape
 
@@ -117,6 +117,5 @@ For local rules, defer to the nearest child guide:
 
 - `src/AGENTS.md` for app code, component, store, router, and utility changes
 - `.github/AGENTS.md` for workflow and issue template changes
-- `public/images/AGENTS.md` for runtime image asset naming and compatibility rules
 
 If a child guide exists, it overrides this root file for its subtree.

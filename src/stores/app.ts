@@ -3,11 +3,11 @@ import type { ByteDecimalsConfig } from '@/utils/helper'
 import { usePreferredDark, useStorageAsync } from '@vueuse/core'
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
+import { DEFAULT_STEAL_MULTIPLIER, STEAL_MULTIPLIERS } from '@/features/cpu-steal/display'
 import { parseHomePingLineCount, parseHomePingTaskOrder } from '@/utils/homePingSettings'
 
 export type ThemeMode = 'auto' | 'light' | 'dark'
 type Lang = 'zh-CN' | 'en-US'
-type NodeViewMode = 'card' | 'list'
 type RpcTransportMode = 'websocket' | 'http'
 type EarthViewMode = 'earth' | 'earth-stop' | 'maps' | 'cards' | 'hide'
 const PING_TASK_NAME_SEPARATOR = /[,，]/
@@ -39,42 +39,6 @@ const useAppStore = defineStore('app', () => {
   const nodeSelectedGroup = useStorageAsync<string>('nodeSelectedGroup', 'all', localStorage)
   const isLoggedIn = ref<boolean>(false)
   const connectionError = ref<boolean>(false)
-
-  // 首页滚动位置记忆
-
-  // 使用 null 表示未设置，等待主题配置加载后决定
-  const storedViewMode = useStorageAsync<NodeViewMode | null>('nodeViewMode', null, localStorage)
-
-  // 计算属性：从主题配置获取默认视图模式
-  const defaultViewMode = computed<NodeViewMode>(() => {
-    const settings = publicSettings.value?.theme_settings
-    if (settings && typeof settings.defaultViewMode === 'string') {
-      const mode = settings.defaultViewMode
-      if (mode === 'card' || mode === 'list') {
-        return mode
-      }
-    }
-    return 'card'
-  })
-
-  // 校验视图模式是否为合法值
-  function isValidViewMode(value: string | null): value is NodeViewMode {
-    return value === 'card' || value === 'list'
-  }
-
-  // 当前实际使用的视图模式
-  const nodeViewMode = computed<NodeViewMode>({
-    get: () => {
-      // 校验 storedViewMode 是否为合法值，非法值时使用默认值
-      if (storedViewMode.value !== null && isValidViewMode(storedViewMode.value)) {
-        return storedViewMode.value
-      }
-      return defaultViewMode.value
-    },
-    set: (val) => {
-      storedViewMode.value = val
-    },
-  })
 
   // 计算属性：从主题配置获取 RPC 连接模式
   const rpcTransportMode = computed<RpcTransportMode>(() => {
@@ -117,6 +81,11 @@ const useAppStore = defineStore('app', () => {
     return false
   })
 
+  const dataUpdateIntervalMs = computed(() => {
+    const interval = publicSettings.value?.theme_settings?.dataUpdateInterval
+    return typeof interval === 'number' && interval >= 1 && interval <= 60 ? interval * 1000 : 3000
+  })
+
   const homePingLineCount = computed(() => parseHomePingLineCount(publicSettings.value?.theme_settings?.homePingLineCount))
   const homePingTaskOrder = computed(() => parseHomePingTaskOrder(publicSettings.value?.theme_settings?.homePingTaskOrder))
 
@@ -146,14 +115,6 @@ const useAppStore = defineStore('app', () => {
     }
     return false
   })
-
-  // 当 publicSettings 加载后，如果 localStorage 没有保存过视图模式或值为非法值，使用默认值
-  watch(publicSettings, (settings) => {
-    if (settings && !isValidViewMode(storedViewMode.value)) {
-      // 触发 computed setter，会自动保存到 localStorage
-      storedViewMode.value = defaultViewMode.value
-    }
-  }, { immediate: true })
 
   // 使用 VueUse 的 usePreferredDark 检测系统主题偏好
   const prefersDark = usePreferredDark()
@@ -213,8 +174,8 @@ const useAppStore = defineStore('app', () => {
   })
 
   const cpuStealMultiplier = computed<number>(() => {
-    const value = Number(publicSettings.value?.theme_settings?.cpu_steal_multiplier ?? 10)
-    return [1, 5, 10, 20, 50].includes(value) ? value : 10
+    const value = Number(publicSettings.value?.theme_settings?.cpu_steal_multiplier ?? DEFAULT_STEAL_MULTIPLIER)
+    return (STEAL_MULTIPLIERS as readonly number[]).includes(value) ? value : DEFAULT_STEAL_MULTIPLIER
   })
 
   const cpuStealDefaultVisible = computed<boolean>(() => {
@@ -248,9 +209,8 @@ const useAppStore = defineStore('app', () => {
     isDark,
     lang,
     nodeSelectedGroup,
-    nodeViewMode,
-    defaultViewMode,
     rpcTransportMode,
+    dataUpdateIntervalMs,
     byteDecimals,
     earthViewMode,
     visitorInfoCardEnabled,

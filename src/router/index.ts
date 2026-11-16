@@ -1,8 +1,7 @@
 import { shallowRef } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
-import { loadCostRenewal, loadHome, loadIpqaDetail, loadNodeDetail } from './pageLoaders'
+import { loadCostRenewal, loadHome, loadIpqaDetail, loadNodeDetail, loadResourceInsightsPage } from './pageLoaders'
 import { createPageScroll, pageTransition } from './pageNavigation'
-import { loadResourceInsightsPage } from './resourceInsights'
 
 const pageScroll = createPageScroll()
 export const routeTransition = shallowRef('page-fade')

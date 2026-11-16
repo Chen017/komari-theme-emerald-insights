@@ -245,7 +245,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="relative h-full border-none" content-class="h-full !p-0">
+  <div class="relative h-full border-none">
     <!-- 预加载国旗图片，避免 tooltip 重复请求 -->
     <div class="hidden">
       <img v-for="point in points" :key="point.code" :src="`/assets/flags/${point.code}.svg`">

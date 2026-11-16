@@ -227,7 +227,7 @@ const trafficProgressStyle = computed(() => ({
         class="border-none transition-colors rounded-md bg-background/60 hover:bg-background"
       >
         <Empty description="节点不存在或已被删除">
-          <template #extra>
+          <template #header-extra>
             <Button @click="router.push('/')">
               返回首页
             </Button>
