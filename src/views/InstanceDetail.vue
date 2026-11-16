@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { CurrencyCode } from '@/utils/financeHelper'
 import { Icon } from '@iconify/vue'
-import { computed, defineAsyncComponent, onMounted, ref } from 'vue'
+import { computed, defineAsyncComponent, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -29,15 +29,18 @@ const nodesStore = useNodesStore()
 const { formatBytes, formatBytesPerSecond, formatUptime } = useNodeFormatters()
 const exchangeRates = ref(financeHelper.DEFAULT_EXCHANGE_RATES)
 const financeBaseCurrency = ref<CurrencyCode>('CNY')
+const data = computed(() => nodesStore.nodes.find(node => node.uuid === props.id))
+const layout = computed(() => appStore.nodeDetailLayout)
 
-onMounted(async () => {
+watch(() => Boolean(data.value) && layout.value.showCost, async (showCost) => {
+  if (!showCost)
+    return
+
   financeBaseCurrency.value = financeHelper.getStoredFinanceCurrency()
 
   const { rates } = await financeHelper.getDailyExchangeRates()
   exchangeRates.value = rates
-})
-
-const data = computed(() => nodesStore.nodes.find(node => node.uuid === props.id))
+}, { immediate: true })
 
 interface InfoItem {
   label: string
@@ -221,8 +224,8 @@ const trafficProgressStyle = computed(() => ({
 </script>
 
 <template>
-  <div class="instance-detail space-y-4">
-    <div v-if="!data" class="p-4">
+  <div class="instance-detail flex min-w-0 flex-col gap-4 px-4">
+    <div v-if="!data" class="py-4">
       <CardX
         class="border-none transition-colors rounded-md bg-background/60 hover:bg-background"
       >
@@ -237,7 +240,7 @@ const trafficProgressStyle = computed(() => ({
     </div>
 
     <template v-else>
-      <div class="px-4 flex gap-4 items-center">
+      <div class="flex gap-4 items-center">
         <Button variant="ghost" size="icon-sm" class="bg-background/50 hover:bg-background" aria-label="返回首页" @click="router.push('/')">
           <Icon icon="tabler:arrow-left" :width="16" :height="16" />
         </Button>
@@ -253,144 +256,148 @@ const trafficProgressStyle = computed(() => ({
         </Badge>
       </div>
 
-      <div class="px-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <CardX
-          v-for="item in metricCards" :key="item.label" hoverable size="small"
-          class="group h-full border-none transition-colors rounded-md bg-background/60 hover:bg-background"
-          content-class="h-full !p-3"
-        >
-          <div class="flex h-full min-h-10 md:min-h-18 flex-col justify-between gap-3">
-            <div class="flex items-center justify-between gap-2">
-              <span class="text-xs font-medium tracking-wider text-muted-foreground">{{ item.label }}</span>
-              <Icon
-                :icon="item.icon" :width="20" :height="20"
-                class="text-slate-500/25 transition-colors group-hover:text-slate-500"
-              />
-            </div>
-            <div class="min-w-0 space-y-1">
-              <div
-                class="flex min-w-0 items-baseline gap-1 truncate font-semibold leading-none"
-                :class="item.valueClass"
-              >
-                <span class="truncate text-base sm:text-2xl">{{ item.value }}</span>
-                <span v-if="item.unit" class="shrink-0 text-[11px] font-medium text-muted-foreground sm:text-xs">
-                  {{ item.unit }}
-                </span>
-              </div>
-            </div>
-          </div>
-        </CardX>
-      </div>
-
-      <div class="px-4 gap-4 grid grid-cols-1 lg:grid-cols-2">
-        <CardX
-          title="硬件信息" size="small"
-          class="group h-full border-none transition-colors rounded-md bg-background/60 hover:bg-background"
-        >
-          <div class="gap-3 grid grid-cols-3">
-            <div
-              v-for="(item, index) in hardwareInfo" :key="item.label"
-              class="min-w-0 flex flex-col gap-1 rounded-sm bg-slate-500/5 p-2" :class="!index && 'col-span-3'"
+      <template v-for="section in layout.sections" :key="section">
+        <LoadChart v-if="section === 'monitoring'" :uuid="data.uuid" :data-node-detail-section="section" />
+        <PingChart v-else-if="section === 'ping'" :uuid="data.uuid" :data-node-detail-section="section" />
+        <IpqaSnapshotCard v-else-if="section === 'ipqa'" :uuid="data.uuid" :data-node-detail-section="section" />
+        <div v-else class="flex flex-col gap-4" :data-node-detail-section="section">
+          <div v-if="layout.showCost" class="grid grid-cols-2 gap-4 lg:grid-cols-4" data-node-detail-info="cost">
+            <CardX
+              v-for="item in metricCards" :key="item.label" hoverable size="small"
+              class="group h-full border-none transition-colors rounded-md bg-background/60 hover:bg-background"
+              content-class="h-full !p-3"
             >
-              <div class="flex gap-1 items-center text-muted-foreground">
-                <Icon v-if="item.icon" :icon="item.icon" :width="14" :height="14" />
-                <span class="text-xs sm:text-sm">{{ item.label }}</span>
-              </div>
-              <span class="text-xs sm:text-sm break-all">{{ item.value }}</span>
-            </div>
-          </div>
-        </CardX>
-
-        <CardX
-          title="系统信息" size="small"
-          class="group h-full border-none transition-colors rounded-md bg-background/60 hover:bg-background"
-        >
-          <div class="gap-3 grid grid-cols-1 sm:grid-cols-2">
-            <div
-              v-for="item in systemInfo" :key="item.label"
-              class="min-w-0 flex flex-col gap-1 rounded-sm bg-slate-500/5 p-2"
-            >
-              <div class="flex gap-1 items-center text-muted-foreground">
-                <Icon v-if="item.icon" :icon="item.icon" :width="14" :height="14" />
-                <span class="text-xs sm:text-sm">{{ item.label }}</span>
-              </div>
-              <div class="flex min-w-0 gap-2 items-center">
-                <img
-                  v-if="item.label === '操作系统'" :src="getOSImage(data.os)" :alt="getOSName(data.os)"
-                  class="size-5 shrink-0"
-                >
-                <span class="text-xs sm:text-sm break-all">
-                  {{ item.value }}
-                </span>
-              </div>
-            </div>
-          </div>
-        </CardX>
-
-        <CardX
-          title="存储信息" size="small"
-          class="group h-full border-none transition-colors rounded-md bg-background/60 hover:bg-background"
-        >
-          <div class="gap-3 grid grid-cols-3">
-            <div
-              v-for="item in storageInfo" :key="item.label"
-              class="min-w-0 flex flex-col gap-1 rounded-sm bg-slate-500/5 p-2"
-            >
-              <div class="flex gap-1 items-center text-muted-foreground">
-                <Icon v-if="item.icon" :icon="item.icon" :width="14" :height="14" />
-                <span class="text-xs sm:text-sm">{{ item.label }}</span>
-              </div>
-              <span class="text-xs sm:text-sm break-all">{{ item.value }}</span>
-            </div>
-          </div>
-        </CardX>
-
-        <CardX
-          title="网络信息" size="small"
-          class="group h-full border-none transition-colors rounded-md bg-background/60 hover:bg-background"
-          content-class="pt-0"
-        >
-          <div class="gap-3 grid grid-cols-2">
-            <div class="relative min-w-0 overflow-hidden rounded-sm bg-slate-500/5 p-2">
-              <div
-                v-if="hasTrafficLimit"
-                class="absolute inset-y-0 left-0 rounded-sm bg-primary/10 pointer-events-none transition-[width] duration-300 ease-out"
-                :style="trafficProgressStyle"
-              />
-              <div class="relative flex flex-col gap-1.5">
-                <div class="flex gap-1 items-center text-muted-foreground">
-                  <Icon icon="icon-park-outline:transfer-data" :width="14" :height="14" />
-                  <span class="text-xs sm:text-sm">总流量</span>
-                  <div class="flex-1" />
-                  <span class="hidden sm:block text-[11px] font-medium text-foreground/70">{{
-                    formatBytes(data?.net_total_up ?? 0) }} / {{ formatBytes(data?.net_total_down ?? 0) }}</span>
+              <div class="flex h-full min-h-10 md:min-h-18 flex-col justify-between gap-3">
+                <div class="flex items-center justify-between gap-2">
+                  <span class="text-xs font-medium tracking-wider text-muted-foreground">{{ item.label }}</span>
+                  <Icon
+                    :icon="item.icon" :width="20" :height="20"
+                    class="text-slate-500/25 transition-colors group-hover:text-slate-500"
+                  />
                 </div>
-                <span class="text-xs sm:text-sm break-all">
-                  {{ trafficUsageText }}
-                </span>
+                <div class="min-w-0 space-y-1">
+                  <div
+                    class="flex min-w-0 items-baseline gap-1 truncate font-semibold leading-none"
+                    :class="item.valueClass"
+                  >
+                    <span class="truncate text-base sm:text-2xl">{{ item.value }}</span>
+                    <span v-if="item.unit" class="shrink-0 text-[11px] font-medium text-muted-foreground sm:text-xs">
+                      {{ item.unit }}
+                    </span>
+                  </div>
+                </div>
               </div>
-            </div>
-            <div class="min-w-0 flex flex-col gap-1 rounded-sm bg-slate-500/5 p-2">
-              <div class="flex gap-1 items-center text-muted-foreground">
-                <Icon icon="icon-park-outline:dashboard-one" :width="14" :height="14" />
-                <span class="text-xs sm:text-sm">网络速率</span>
-              </div>
-              <span class="text-xs sm:text-sm break-all flex flex-row flex-wrap items-center gap-1">
-                <Icon icon="tabler:chevron-up" width="12" height="12" />
-                {{ formatBytesPerSecond(data?.net_out ?? 0) }}
-                <span class="px-0.5" />
-                <Icon icon="tabler:chevron-down" width="12" height="12" />
-                {{ formatBytesPerSecond(data?.net_in ?? 0) }}
-              </span>
-            </div>
+            </CardX>
           </div>
-        </CardX>
-      </div>
 
-      <IpqaSnapshotCard v-if="appStore.enableNodeDetailIpqa" :uuid="data.uuid" class="mx-4" />
+          <div v-if="layout.showHardwareSystem" class="grid grid-cols-1 gap-4 lg:grid-cols-2" data-node-detail-info="hardware-system">
+            <CardX
+              title="硬件信息" size="small"
+              class="group h-full border-none transition-colors rounded-md bg-background/60 hover:bg-background"
+            >
+              <div class="gap-3 grid grid-cols-3">
+                <div
+                  v-for="(item, index) in hardwareInfo" :key="item.label"
+                  class="min-w-0 flex flex-col gap-1 rounded-sm bg-slate-500/5 p-2" :class="!index && 'col-span-3'"
+                >
+                  <div class="flex gap-1 items-center text-muted-foreground">
+                    <Icon v-if="item.icon" :icon="item.icon" :width="14" :height="14" />
+                    <span class="text-xs sm:text-sm">{{ item.label }}</span>
+                  </div>
+                  <span class="text-xs sm:text-sm break-all">{{ item.value }}</span>
+                </div>
+              </div>
+            </CardX>
 
-      <LoadChart :uuid="data.uuid" class="px-4" />
-      <PingChart :uuid="data.uuid" class="px-4" />
+            <CardX
+              title="系统信息" size="small"
+              class="group h-full border-none transition-colors rounded-md bg-background/60 hover:bg-background"
+            >
+              <div class="gap-3 grid grid-cols-1 sm:grid-cols-2">
+                <div
+                  v-for="item in systemInfo" :key="item.label"
+                  class="min-w-0 flex flex-col gap-1 rounded-sm bg-slate-500/5 p-2"
+                >
+                  <div class="flex gap-1 items-center text-muted-foreground">
+                    <Icon v-if="item.icon" :icon="item.icon" :width="14" :height="14" />
+                    <span class="text-xs sm:text-sm">{{ item.label }}</span>
+                  </div>
+                  <div class="flex min-w-0 gap-2 items-center">
+                    <img
+                      v-if="item.label === '操作系统'" :src="getOSImage(data.os)" :alt="getOSName(data.os)"
+                      class="size-5 shrink-0"
+                    >
+                    <span class="text-xs sm:text-sm break-all">
+                      {{ item.value }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </CardX>
+          </div>
+
+          <div v-if="layout.showStorageNetwork" class="grid grid-cols-1 gap-4 lg:grid-cols-2" data-node-detail-info="storage-network">
+            <CardX
+              title="存储信息" size="small"
+              class="group h-full border-none transition-colors rounded-md bg-background/60 hover:bg-background"
+            >
+              <div class="gap-3 grid grid-cols-3">
+                <div
+                  v-for="item in storageInfo" :key="item.label"
+                  class="min-w-0 flex flex-col gap-1 rounded-sm bg-slate-500/5 p-2"
+                >
+                  <div class="flex gap-1 items-center text-muted-foreground">
+                    <Icon v-if="item.icon" :icon="item.icon" :width="14" :height="14" />
+                    <span class="text-xs sm:text-sm">{{ item.label }}</span>
+                  </div>
+                  <span class="text-xs sm:text-sm break-all">{{ item.value }}</span>
+                </div>
+              </div>
+            </CardX>
+
+            <CardX
+              title="网络信息" size="small"
+              class="group h-full border-none transition-colors rounded-md bg-background/60 hover:bg-background"
+              content-class="pt-0"
+            >
+              <div class="gap-3 grid grid-cols-2">
+                <div class="relative min-w-0 overflow-hidden rounded-sm bg-slate-500/5 p-2">
+                  <div
+                    v-if="hasTrafficLimit"
+                    class="absolute inset-y-0 left-0 rounded-sm bg-primary/10 pointer-events-none transition-[width] duration-300 ease-out"
+                    :style="trafficProgressStyle"
+                  />
+                  <div class="relative flex flex-col gap-1.5">
+                    <div class="flex gap-1 items-center text-muted-foreground">
+                      <Icon icon="icon-park-outline:transfer-data" :width="14" :height="14" />
+                      <span class="text-xs sm:text-sm">总流量</span>
+                      <div class="flex-1" />
+                      <span class="hidden sm:block text-[11px] font-medium text-foreground/70">{{
+                        formatBytes(data?.net_total_up ?? 0) }} / {{ formatBytes(data?.net_total_down ?? 0) }}</span>
+                    </div>
+                    <span class="text-xs sm:text-sm break-all">
+                      {{ trafficUsageText }}
+                    </span>
+                  </div>
+                </div>
+                <div class="min-w-0 flex flex-col gap-1 rounded-sm bg-slate-500/5 p-2">
+                  <div class="flex gap-1 items-center text-muted-foreground">
+                    <Icon icon="icon-park-outline:dashboard-one" :width="14" :height="14" />
+                    <span class="text-xs sm:text-sm">网络速率</span>
+                  </div>
+                  <span class="text-xs sm:text-sm break-all flex flex-row flex-wrap items-center gap-1">
+                    <Icon icon="tabler:chevron-up" width="12" height="12" />
+                    {{ formatBytesPerSecond(data?.net_out ?? 0) }}
+                    <span class="px-0.5" />
+                    <Icon icon="tabler:chevron-down" width="12" height="12" />
+                    {{ formatBytesPerSecond(data?.net_in ?? 0) }}
+                  </span>
+                </div>
+              </div>
+            </CardX>
+          </div>
+        </div>
+      </template>
     </template>
   </div>
 </template>

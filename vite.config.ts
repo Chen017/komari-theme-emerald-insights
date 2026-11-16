@@ -89,7 +89,7 @@ function komariThemeZip(beta: boolean, version: string, hash: string): Plugin {
 export default defineConfig(({ mode }) => {
   const beta = mode === 'beta'
   const hash = getCommitHash()
-  const version = beta ? `${packageJson.version}-beta.performance.g${hash}` : packageJson.version
+  const version = beta ? `${packageJson.version}-beta.node-detail.g${hash}` : packageJson.version
   return {
     define: {
       __BUILD_VERSION__: JSON.stringify(version),

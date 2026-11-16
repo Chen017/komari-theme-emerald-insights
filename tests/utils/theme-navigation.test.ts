@@ -69,6 +69,7 @@ it('omits all retired setting keys and sections from the packaged schema input',
     '基础设置',
     '页面设置',
     '首页探测',
+    '节点详情布局',
     '资源概览与 IPQA 设置',
     'CPU Steal 设置',
   ])

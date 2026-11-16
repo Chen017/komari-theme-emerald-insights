@@ -27,6 +27,9 @@ const props = defineProps<{
 
 const appStore = useAppStore()
 const nodesStore = useNodesStore()
+const showPrimaryCharts = computed(() => appStore.nodeDetailLayout.showPrimaryCharts)
+const showExtraCharts = computed(() => appStore.nodeDetailLayout.showExtraCharts)
+const canFetchSteal = computed(() => showPrimaryCharts.value && appStore.enableCpuSteal)
 
 // 从 publicSettings 获取记录保留时间
 const maxRecordPreserveTime = computed(() => appStore.publicSettings?.record_preserve_time || 720)
@@ -148,7 +151,7 @@ const stealSamples = shallowRef<StealSample[]>([])
 let stealRequestGeneration = 0
 async function refreshSteal() {
   const generation = ++stealRequestGeneration
-  if (!appStore.enableCpuSteal)
+  if (!canFetchSteal.value)
     return
   const uuid = props.uuid
   const view = selectedView.value
@@ -161,17 +164,11 @@ async function refreshSteal() {
   if (generation === stealRequestGeneration && uuid === props.uuid && view === selectedView.value)
     stealSamples.value = samples
 }
-watch([() => props.uuid, selectedView, () => appStore.enableCpuSteal], () => {
-  // Invalidate any in-flight HTTP request when switching nodes, view or preference.
-  ++stealRequestGeneration
+watch([() => props.uuid, selectedView, canFetchSteal], () => {
   stealSamples.value = []
-  if (appStore.enableCpuSteal)
-    void refreshSteal()
+  void refreshSteal()
 }, { immediate: true })
-useIntervalFn(() => {
-  if (appStore.enableCpuSteal)
-    void refreshSteal()
-}, 120000)
+useIntervalFn(refreshSteal, 120000)
 const loading = ref(false)
 const isInitialLoad = ref(true) // 是否为首次加载（用于控制实时模式下的 NSpin 显示）
 const error = ref<string | null>(null)
@@ -970,9 +967,14 @@ onMounted(() => {
       </div>
 
       <!-- 图表网格 -->
-      <div v-else class="gap-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+      <div
+        v-else class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"
+        :class="(!showPrimaryCharts || !showExtraCharts) && 'md:[&>*:last-child]:col-span-2 xl:[&>*:last-child]:col-span-1'"
+        data-load-chart-grid
+      >
         <!-- CPU 卡片 -->
         <CardX
+          v-if="showPrimaryCharts"
           size="small"
           class="border-none transition-colors rounded-md bg-background/60 hover:bg-background"
         >
@@ -993,6 +995,7 @@ onMounted(() => {
 
         <!-- 内存卡片 -->
         <CardX
+          v-if="showPrimaryCharts"
           size="small"
           class="border-none transition-colors rounded-md bg-background/60 hover:bg-background"
         >
@@ -1022,6 +1025,7 @@ onMounted(() => {
 
         <!-- 磁盘卡片 -->
         <CardX
+          v-if="showExtraCharts"
           size="small"
           class="border-none transition-colors rounded-md bg-background/60 hover:bg-background"
         >
@@ -1050,6 +1054,7 @@ onMounted(() => {
 
         <!-- 网络卡片 -->
         <CardX
+          v-if="showPrimaryCharts"
           size="small"
           class="border-none transition-colors rounded-md bg-background/60 hover:bg-background"
         >
@@ -1083,6 +1088,7 @@ onMounted(() => {
 
         <!-- 连接数卡片 -->
         <CardX
+          v-if="showExtraCharts"
           size="small"
           class="border-none transition-colors rounded-md bg-background/60 hover:bg-background"
         >
@@ -1103,6 +1109,7 @@ onMounted(() => {
 
         <!-- 进程卡片 -->
         <CardX
+          v-if="showExtraCharts"
           size="small"
           class="border-none transition-colors rounded-md bg-background/60 hover:bg-background"
         >

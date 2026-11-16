@@ -23,7 +23,7 @@ const { version } = JSON.parse(readFileSync('package.json', 'utf8'))
 assert.equal(manifest.version, version)
 const beta = /^komari-theme-emerald-insights-beta-([\da-f]+)\.zip$/.exec(basename(zip))
 const expected = beta
-  ? { ...manifest, name: `${manifest.name} (Beta)`, version: `${version}-beta.performance.g${beta[1]}` }
+  ? { ...manifest, name: `${manifest.name} (Beta)`, version: `${version}-beta.node-detail.g${beta[1]}` }
   : manifest
 assert.deepEqual(JSON.parse(readEntry('komari-theme.json')), expected)
 const preview = readFileSync('docs/preview.png')

@@ -5,7 +5,6 @@ import { RouterLink } from 'vue-router'
 import { useNodesStore } from '@/stores/nodes'
 import { refreshAllNodes } from '@/utils/init'
 import Availability30dCard from '../availability/Availability30dCard.vue'
-import CostSummaryCard from '../components/CostSummaryCard.vue'
 import IpqaOverviewSection from '../components/IpqaOverviewSection.vue'
 import TrafficTrendCard from '../traffic/TrafficTrendCard.vue'
 
@@ -16,7 +15,6 @@ const nodesStore = useNodesStore()
 const trafficCardRef = ref<InstanceType<typeof TrafficTrendCard> | null>(null)
 const availabilityCardRef = ref<InstanceType<typeof Availability30dCard> | null>(null)
 const ipqaSectionRef = ref<InstanceType<typeof IpqaOverviewSection> | null>(null)
-const costCardRef = ref<InstanceType<typeof CostSummaryCard> | null>(null)
 const refreshing = ref(false)
 
 async function handleRefreshAll() {
@@ -29,7 +27,6 @@ async function handleRefreshAll() {
       trafficCardRef.value?.refresh(),
       availabilityCardRef.value?.refresh(),
       ipqaSectionRef.value?.refresh(),
-      costCardRef.value?.refresh(),
     ])
   }
   finally {
@@ -59,7 +56,7 @@ async function handleRefreshAll() {
           资源概览
         </h1>
         <p class="mt-1 text-xs text-neutral-600 dark:text-neutral-400 sm:text-sm">
-          每日流量趋势、30 天 VPS 在线率、IP 质量检测与轻量成本摘要。
+          每日流量趋势、30 天 VPS 在线率与 IP 质量检测。
         </p>
       </div>
 
@@ -94,8 +91,5 @@ async function handleRefreshAll() {
 
     <!-- IP Quality Section -->
     <IpqaOverviewSection ref="ipqaSectionRef" :nodes="nodesStore.nodes" :loading="refreshing" />
-
-    <!-- Cost Summary Section -->
-    <CostSummaryCard ref="costCardRef" :nodes="nodesStore.nodes" :loading="refreshing" />
   </div>
 </template>

@@ -12,6 +12,13 @@ type RpcTransportMode = 'websocket' | 'http'
 type EarthViewMode = 'earth' | 'earth-stop' | 'maps' | 'cards' | 'hide'
 const PING_TASK_NAME_SEPARATOR = /[,，]/
 
+const NODE_DETAIL_SECTIONS = [
+  { id: 'monitoring', label: '资源监控' },
+  { id: 'ping', label: '延迟与丢包' },
+  { id: 'ipqa', label: 'IP 质量概况' },
+  { id: 'info', label: '基础信息' },
+] as const
+
 /** 固定的字节精度配置 */
 const BYTE_DECIMALS: ByteDecimalsConfig = {
   B: 0,
@@ -183,9 +190,34 @@ const useAppStore = defineStore('app', () => {
     return typeof value === 'boolean' ? value : false
   })
 
-  const enableNodeDetailIpqa = computed<boolean>(() => {
-    const val = publicSettings.value?.theme_settings?.enable_node_detail_ipqa
-    return val !== undefined ? Boolean(val) : true
+  const nodeDetailLayout = computed(() => {
+    const settings = publicSettings.value?.theme_settings
+    const showPrimaryCharts = settings?.node_detail_show_primary_charts !== false
+    const showExtraCharts = settings?.node_detail_show_extra_charts === true
+    const showStorageNetwork = settings?.node_detail_show_storage_network !== false
+    const showHardwareSystem = settings?.node_detail_show_hardware_system !== false
+    const showCost = settings?.node_detail_show_cost !== false
+    const ipqaSetting = settings?.enable_node_detail_ipqa
+    const visible = {
+      monitoring: showPrimaryCharts || showExtraCharts,
+      ping: true,
+      ipqa: ipqaSetting === undefined || Boolean(ipqaSetting),
+      info: showCost || showHardwareSystem || showStorageNetwork,
+    }
+    const remaining = new Set(NODE_DETAIL_SECTIONS.map(section => section.id))
+    const chosen = NODE_DETAIL_SECTIONS.map((_, index) => {
+      const label = settings?.[`node_detail_section_${index + 1}`]
+      const section = NODE_DETAIL_SECTIONS.find(section => section.label === label)
+      if (section && remaining.delete(section.id))
+        return section.id
+      return undefined
+    })
+    const fallback = remaining.values()
+    const sections = chosen
+      .map(id => id ?? fallback.next().value)
+      .filter(id => id !== undefined && visible[id])
+
+    return { sections, showPrimaryCharts, showExtraCharts, showStorageNetwork, showHardwareSystem, showCost }
   })
 
   const ipqaShowRiskMatrix = computed<boolean>(() => {
@@ -226,7 +258,7 @@ const useAppStore = defineStore('app', () => {
     cpuStealDefaultVisible,
     enableCostRenewal,
     enableIpqaOverview,
-    enableNodeDetailIpqa,
+    nodeDetailLayout,
     ipqaShowRiskMatrix,
     ipqaShowMediaMatrix,
     ipqaShowChanges,
